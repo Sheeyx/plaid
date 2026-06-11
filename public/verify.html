@@ -1,32 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>United Transports — Verify Identity</title>
+
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #f0f2f5;
-    }
-
-    /* Blur overlay */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.45);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      z-index: 0;
-    }
-
-    .topnav, .page {
-      position: relative;
-      z-index: 1;
+      min-height: 100vh;
     }
 
     .topnav {
@@ -39,220 +31,428 @@
       justify-content: space-between;
     }
 
-    .logo { font-size: 18px; font-weight: 700; color: #000; }
-    .logo span { color: #2563eb; }
-
-    .progress-wrap { display: flex; align-items: center; gap: 8px; }
-    .progress-step { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aaa; }
-    .progress-step.active { color: #000; font-weight: 500; }
-    .progress-step.done { color: #16a34a; }
-    .progress-num {
-      width: 24px; height: 24px; border-radius: 50%;
-      background: #e8e8e8; display: flex; align-items: center;
-      justify-content: center; font-size: 12px; font-weight: 600; color: #888;
+    .logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: #000;
     }
-    .progress-step.active .progress-num { background: #000; color: #fff; }
-    .progress-step.done .progress-num { background: #16a34a; color: #fff; }
-    .progress-line { width: 40px; height: 1px; background: #e8e8e8; }
-    .progress-line.done { background: #16a34a; }
+
+    .logo span {
+      color: #2563eb;
+    }
+
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .progress-step {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #aaa;
+    }
+
+    .progress-step.active {
+      color: #000;
+      font-weight: 500;
+    }
+
+    .progress-step.done {
+      color: #16a34a;
+    }
+
+    .progress-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #e8e8e8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #888;
+    }
+
+    .progress-step.active .progress-num {
+      background: #000;
+      color: #fff;
+    }
+
+    .progress-step.done .progress-num {
+      background: #16a34a;
+      color: #fff;
+    }
+
+    .progress-line {
+      width: 40px;
+      height: 1px;
+      background: #e8e8e8;
+    }
+
+    .progress-line.done {
+      background: #16a34a;
+    }
 
     .page {
       min-height: calc(100vh - 60px);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 32px 16px;
+      padding: 32px;
     }
 
-    /* Plaid modal to'liq ekran */
-    iframe[id^="plaid"],
-    div[id^="plaid"] iframe {
-      width: 100vw !important;
-      height: 100vh !important;
-      top: 0 !important;
-      left: 0 !important;
-    }
-
-    /* IDV card */
-    #step-idv { display: flex; }
-    #step-success { display: none; }
-
-    .idv-card, .success-card {
+    .card {
+      width: 100%;
+      max-width: 460px;
       background: #fff;
       border-radius: 16px;
       border: 1px solid #e8e8e8;
       padding: 40px 32px;
-      width: 375px;
-      max-width: 100%;
-      min-height: 620px;
       text-align: center;
+    }
+
+    .icon {
+      width: 72px;
+      height: 72px;
+      background: #000;
+      color: #fff;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 32px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #000;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.7;
+      margin-bottom: 28px;
+    }
+
+    .features {
       display: flex;
       flex-direction: column;
+      gap: 12px;
+      margin-bottom: 28px;
+      text-align: left;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: #333;
+    }
+
+    .feature-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
       justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
     }
 
-    .idv-icon-wrap {
-      width: 72px; height: 72px; background: #000;
-      border-radius: 16px; display: flex; align-items: center;
-      justify-content: center; margin: 0 auto 24px; font-size: 32px;
+    button {
+      width: 100%;
+      background: #000;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
     }
 
-    .idv-title { font-size: 22px; font-weight: 700; color: #000; margin-bottom: 8px; }
-    .idv-sub { font-size: 14px; color: #666; line-height: 1.7; margin-bottom: 28px; }
-
-    .idv-features { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; text-align: left; }
-    .idv-feature { display: flex; align-items: center; gap: 12px; font-size: 14px; color: #333; }
-    .feat-icon {
-      width: 32px; height: 32px; border-radius: 8px;
-      background: #f0f2f5; display: flex; align-items: center;
-      justify-content: center; font-size: 16px; flex-shrink: 0;
+    button:hover {
+      opacity: 0.85;
     }
 
-    #verify-btn {
-      width: 100%; background: #000; color: #fff; border: none;
-      border-radius: 10px; padding: 16px; font-size: 15px;
-      font-weight: 600; cursor: pointer; transition: opacity 0.2s;
-    }
-    #verify-btn:hover { opacity: 0.85; }
-    #verify-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .plaid-badge { margin-top: 14px; font-size: 12px; color: #aaa; }
-
-    /* Success */
-    .success-check {
-      width: 64px; height: 64px; background: #f0fdf4;
-      border: 2px solid #bbf7d0; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 24px; font-size: 28px; color: #16a34a;
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
 
-    .result-box {
-      background: #f8f8f8; border-radius: 8px; padding: 16px;
-      text-align: left; font-family: monospace; font-size: 12px;
-      color: #333; overflow-x: auto; white-space: pre;
-      max-height: 280px; overflow-y: auto;
-      margin-top: 20px; border: 1px solid #e8e8e8;
+    .plaid-badge {
+      margin-top: 14px;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .error {
+      display: none;
+      margin-top: 16px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    @media (max-width: 768px) {
+      .topnav {
+        padding: 0 16px;
+      }
+
+      .progress-step span {
+        display: none;
+      }
+
+      .page {
+        padding: 16px;
+      }
+
+      .card {
+        padding: 32px 24px;
+      }
     }
   </style>
 </head>
-<body>
 
+<body>
   <nav class="topnav">
     <div class="logo">United <span>Transports</span></div>
+
     <div class="progress-wrap">
       <div class="progress-step done">
-        <div class="progress-num">&#10003;</div>
+        <div class="progress-num">✓</div>
         <span>Application</span>
       </div>
+
       <div class="progress-line done"></div>
-      <div class="progress-step active" id="ps2">
+
+      <div class="progress-step active">
         <div class="progress-num">2</div>
         <span>Verify Identity</span>
       </div>
-      <div class="progress-line" id="pl2"></div>
-      <div class="progress-step" id="ps3">
+
+      <div class="progress-line"></div>
+
+      <div class="progress-step">
         <div class="progress-num">3</div>
         <span>Complete</span>
       </div>
     </div>
   </nav>
 
-  <div class="page">
+  <main class="page">
+    <div class="card">
+      <div class="icon">🔒</div>
 
-    <!-- IDV Step -->
-    <div id="step-idv">
-      <div class="idv-card">
-        <div class="idv-icon-wrap">&#128274;</div>
-        <div class="idv-title">Verify Your Identity</div>
-        <div class="idv-sub">
-          Your application was submitted successfully!<br>
-          One last step — verify your identity to complete the process.
-        </div>
-        <div class="idv-features">
-          <div class="idv-feature">
-            <div class="feat-icon">&#128196;</div>
-            <span>Government-issued ID or Passport</span>
-          </div>
-          <div class="idv-feature">
-            <div class="feat-icon">&#129333;</div>
-            <span>Quick selfie for face match</span>
-          </div>
-          <div class="idv-feature">
-            <div class="feat-icon">&#9201;</div>
-            <span>Takes less than 2 minutes</span>
-          </div>
-        </div>
-        <button id="verify-btn" onclick="startIDV()">
-          Start Identity Verification &rarr;
-        </button>
-        <div class="plaid-badge">&#128274; Powered by <strong style="color:#000">Plaid</strong></div>
+      <h1>Verify Your Identity</h1>
+
+      <div class="subtitle">
+        Your application was submitted successfully.<br />
+        One last step — verify your identity to complete the process.
       </div>
-    </div>
 
-    <!-- Success Step -->
-    <div id="step-success">
-      <div class="success-card">
-        <div class="success-check">&#10003;</div>
-        <div style="font-size:22px;font-weight:700;margin-bottom:8px;">All Done!</div>
-        <div style="font-size:14px;color:#666;margin-bottom:4px;">Your identity has been verified successfully.</div>
-        <div style="font-size:13px;color:#aaa;">Our team will review your application shortly.</div>
-        <div class="result-box" id="result-box"></div>
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">📄</div>
+          <span>Government-issued ID or Passport</span>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">🤳</div>
+          <span>Quick selfie for face match</span>
+        </div>
+
+        <div class="feature">
+          <div class="feature-icon">⏱️</div>
+          <span>Takes less than 2 minutes</span>
+        </div>
       </div>
-    </div>
 
-  </div>
+      <button id="verify-btn" onclick="startIDV()">
+        Start Identity Verification →
+      </button>
+
+      <div class="plaid-badge">
+        🔒 Powered by <strong style="color:#000;">Plaid</strong>
+      </div>
+
+      <div class="error" id="error-box"></div>
+    </div>
+  </main>
 
   <script>
-    // Auto-start IDV when page loads
-    window.onload = function() {
-      setTimeout(startIDV, 800);
-    };
+    const CREATE_LINK_TOKEN_API = "/api/idv/create_link_token";
+    const GET_RESULT_API = "/api/idv/get_result";
+    const COMPLETE_ROUTE = "/complete";
+
+    let plaidHandler = null;
+    let isOpening = false;
+
+    function getApplicationId() {
+      const params = new URLSearchParams(window.location.search);
+
+      let applicationId = params.get("application_id");
+
+      if (!applicationId) {
+        applicationId = sessionStorage.getItem("application_id");
+      }
+
+      if (!applicationId) {
+        applicationId = "app-" + Date.now();
+        sessionStorage.setItem("application_id", applicationId);
+      }
+
+      return applicationId;
+    }
+
+    function showError(message) {
+      const errorBox = document.getElementById("error-box");
+
+      errorBox.textContent = message;
+      errorBox.style.display = "block";
+    }
+
+    function hideError() {
+      const errorBox = document.getElementById("error-box");
+
+      errorBox.textContent = "";
+      errorBox.style.display = "none";
+    }
+
+    function setButtonLoading(isLoading) {
+      const btn = document.getElementById("verify-btn");
+
+      btn.disabled = isLoading;
+      btn.textContent = isLoading
+        ? "Opening Plaid..."
+        : "Start Identity Verification →";
+    }
 
     async function startIDV() {
-      var btn = document.getElementById('verify-btn');
-      if (btn) { btn.disabled = true; btn.textContent = 'Opening...'; }
+      if (isOpening) return;
+
+      isOpening = true;
+      hideError();
+      setButtonLoading(true);
 
       try {
-        const res = await fetch('/api/idv/create_link_token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: 'user-' + Date.now(), email: 'user@example.com' }),
-        });
-        const { link_token } = await res.json();
+        const applicationId = getApplicationId();
 
-        const handler = Plaid.create({
-          token: link_token,
-          onSuccess: async (public_token, metadata) => {
-            const result = await fetch('/api/idv/get_result', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ idv_session_id: metadata.link_session_id }),
-            });
-            const crmData = await result.json();
-
-            document.getElementById('step-idv').style.display = 'none';
-            document.getElementById('step-success').style.display = 'flex';
-
-            document.getElementById('ps2').classList.remove('active');
-            document.getElementById('ps2').classList.add('done');
-            document.getElementById('pl2').classList.add('done');
-            document.getElementById('ps3').classList.add('active');
-
-            document.getElementById('result-box').textContent = JSON.stringify(crmData, null, 2);
-            window.scrollTo(0, 0);
+        const response = await fetch(CREATE_LINK_TOKEN_API, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
           },
-          onExit: (err) => {
-            if (btn) { btn.disabled = false; btn.textContent = 'Start Identity Verification →'; }
-            if (err) console.error(err);
-          },
+          body: JSON.stringify({
+            application_id: applicationId,
+            user_id: applicationId
+          })
         });
 
-        handler.open();
-      } catch(e) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Start Identity Verification →'; }
-        console.error(e);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to create Plaid link token.");
+        }
+
+        if (!data.link_token) {
+          throw new Error("Plaid link_token not found in server response.");
+        }
+
+        plaidHandler = Plaid.create({
+          token: data.link_token,
+
+          onLoad: function () {
+            console.log("Plaid loaded");
+          },
+
+          onSuccess: async function (public_token, metadata) {
+            try {
+              const resultResponse = await fetch(GET_RESULT_API, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  application_id: applicationId,
+                  idv_session_id: metadata.link_session_id,
+                  public_token: public_token || null,
+                  metadata: metadata
+                })
+              });
+
+              const resultData = await resultResponse.json();
+
+              if (!resultResponse.ok) {
+                throw new Error(
+                  resultData.message || "Failed to save Plaid verification result."
+                );
+              }
+
+              window.location.href =
+                COMPLETE_ROUTE +
+                "?application_id=" +
+                encodeURIComponent(applicationId);
+            } catch (error) {
+              console.error(error);
+              showError(
+                "Identity verification was completed, but we could not save the result. Please contact support."
+              );
+
+              isOpening = false;
+              setButtonLoading(false);
+            }
+          },
+
+          onExit: function (err, metadata) {
+            console.log("Plaid exited:", metadata);
+
+            if (err) {
+              console.error("Plaid error:", err);
+              showError("Verification was cancelled or failed. Please try again.");
+            }
+
+            isOpening = false;
+            setButtonLoading(false);
+          },
+
+          onEvent: function (eventName, metadata) {
+            console.log("Plaid event:", eventName, metadata);
+          }
+        });
+
+        plaidHandler.open();
+      } catch (error) {
+        console.error(error);
+
+        showError(error.message || "Could not start Plaid. Please try again.");
+
+        isOpening = false;
+        setButtonLoading(false);
       }
     }
+
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        startIDV();
+      }, 500);
+    });
   </script>
 </body>
 </html>

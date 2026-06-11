@@ -1,273 +1,452 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>United Transports — Application</title>
-  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+    }
 
     .topnav {
-      background: #fff; border-bottom: 1px solid #e8e8e8;
-      padding: 0 32px; height: 60px; display: flex;
-      align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 100;
+      background: #fff;
+      border-bottom: 1px solid #e8e8e8;
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
-    .logo { font-size: 18px; font-weight: 700; color: #000; }
-    .logo span { color: #2563eb; }
-    .progress-wrap { display: flex; align-items: center; gap: 8px; }
-    .progress-step { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aaa; }
-    .progress-step.active { color: #000; font-weight: 500; }
-    .progress-step.done { color: #16a34a; }
-    .progress-num { width: 24px; height: 24px; border-radius: 50%; background: #e8e8e8; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #888; }
-    .progress-step.active .progress-num { background: #000; color: #fff; }
-    .progress-step.done .progress-num { background: #16a34a; color: #fff; }
-    .progress-line { width: 40px; height: 1px; background: #e8e8e8; }
-    .progress-line.done { background: #16a34a; }
 
-    .main { display: flex; min-height: calc(100vh - 60px); }
+    .logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: #000;
+    }
+
+    .logo span {
+      color: #2563eb;
+    }
+
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .progress-step {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #aaa;
+    }
+
+    .progress-step.active {
+      color: #000;
+      font-weight: 500;
+    }
+
+    .progress-step.done {
+      color: #16a34a;
+    }
+
+    .progress-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #e8e8e8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #888;
+    }
+
+    .progress-step.active .progress-num {
+      background: #000;
+      color: #fff;
+    }
+
+    .progress-step.done .progress-num {
+      background: #16a34a;
+      color: #fff;
+    }
+
+    .progress-line {
+      width: 40px;
+      height: 1px;
+      background: #e8e8e8;
+    }
+
+    .progress-line.done {
+      background: #16a34a;
+    }
+
+    .main {
+      display: flex;
+      min-height: calc(100vh - 60px);
+    }
 
     .sidebar {
-      width: 260px; flex-shrink: 0; background: #fff;
-      border-right: 1px solid #e8e8e8; padding: 32px 24px;
-      display: flex; flex-direction: column; gap: 24px;
+      width: 260px;
+      flex-shrink: 0;
+      background: #fff;
+      border-right: 1px solid #e8e8e8;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
     }
-    .sidebar-title { font-size: 11px; font-weight: 600; color: #aaa; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
-    .info-item { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 10px; }
-    .info-icon { width: 28px; height: 28px; border-radius: 6px; background: #f0f2f5; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
-    .secure-badge { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; font-size: 12px; color: #15803d; display: flex; align-items: center; gap: 8px; }
 
-    .form-area { flex: 1; padding: 32px; display: flex; justify-content: center; }
-    .form-container { width: 100%; max-width: 800px; }
-    .form-header { margin-bottom: 20px; }
-    .form-header h1 { font-size: 24px; font-weight: 700; color: #000; margin-bottom: 4px; }
-    .form-header p { font-size: 14px; color: #666; }
-    .form-card { background: #fff; border-radius: 12px; border: 1px solid #e8e8e8; overflow: hidden; }
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
 
-    /* IDV */
-    #step-idv { display: none; flex: 1; align-items: center; justify-content: center; padding: 32px; }
-    .idv-card { background: #fff; border-radius: 16px; border: 1px solid #e8e8e8; padding: 40px 32px; max-width: 460px; width: 100%; text-align: center; }
-    .idv-icon-wrap { width: 72px; height: 72px; background: #000; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 32px; }
-    .idv-title { font-size: 22px; font-weight: 700; color: #000; margin-bottom: 8px; }
-    .idv-sub { font-size: 14px; color: #666; line-height: 1.7; margin-bottom: 28px; }
-    .idv-features { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; text-align: left; }
-    .idv-feature { display: flex; align-items: center; gap: 12px; font-size: 14px; color: #333; }
-    .feat-icon { width: 32px; height: 32px; border-radius: 8px; background: #f0f2f5; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-    #verify-btn { width: 100%; background: #000; color: #fff; border: none; border-radius: 10px; padding: 16px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-    #verify-btn:hover { opacity: 0.85; }
-    #verify-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .plaid-badge { margin-top: 14px; font-size: 12px; color: #aaa; }
+    .info-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
 
-    /* Success */
-    #step-success { display: none; flex: 1; align-items: center; justify-content: center; padding: 32px; }
-    .success-card { background: #fff; border-radius: 16px; border: 1px solid #e8e8e8; padding: 40px 32px; max-width: 480px; width: 100%; text-align: center; }
-    .success-check { width: 64px; height: 64px; background: #f0fdf4; border: 2px solid #bbf7d0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 28px; }
-    .result-box { background: #f8f8f8; border-radius: 8px; padding: 16px; text-align: left; font-family: monospace; font-size: 12px; color: #333; overflow-x: auto; white-space: pre; max-height: 280px; overflow-y: auto; margin-top: 20px; border: 1px solid #e8e8e8; }
+    .info-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .secure-badge {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      color: #15803d;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-area {
+      flex: 1;
+      padding: 32px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .form-container {
+      width: 100%;
+      max-width: 800px;
+    }
+
+    .form-header {
+      margin-bottom: 20px;
+    }
+
+    .form-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #000;
+      margin-bottom: 4px;
+    }
+
+    .form-header p {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .form-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e8e8e8;
+      overflow: hidden;
+    }
 
     @media (max-width: 768px) {
-      .sidebar { display: none; }
-      .form-area, #step-idv, #step-success { padding: 16px; }
-      .topnav { padding: 0 16px; }
-      .progress-step span { display: none; }
+      .sidebar {
+        display: none;
+      }
+
+      .form-area {
+        padding: 16px;
+      }
+
+      .topnav {
+        padding: 0 16px;
+      }
+
+      .progress-step span {
+        display: none;
+      }
     }
   </style>
 </head>
-<body>
 
+<body>
   <nav class="topnav">
     <div class="logo">United <span>Transports</span></div>
+
     <div class="progress-wrap">
-      <div class="progress-step active" id="ps1"><div class="progress-num">1</div><span>Application</span></div>
+      <div class="progress-step active" id="ps1">
+        <div class="progress-num">1</div>
+        <span>Application</span>
+      </div>
+
       <div class="progress-line" id="pl1"></div>
-      <div class="progress-step" id="ps2"><div class="progress-num">2</div><span>Verify Identity</span></div>
+
+      <div class="progress-step" id="ps2">
+        <div class="progress-num">2</div>
+        <span>Verify Identity</span>
+      </div>
+
       <div class="progress-line" id="pl2"></div>
-      <div class="progress-step" id="ps3"><div class="progress-num">3</div><span>Complete</span></div>
+
+      <div class="progress-step" id="ps3">
+        <div class="progress-num">3</div>
+        <span>Complete</span>
+      </div>
     </div>
   </nav>
 
   <div class="main">
-
     <aside class="sidebar" id="sidebar">
       <div>
         <div class="sidebar-title">About this form</div>
-        <div class="info-item"><div class="info-icon">&#128203;</div><span>Fill out your application information completely</span></div>
-        <div class="info-item"><div class="info-icon">&#128274;</div><span>Your data is encrypted and secure</span></div>
-        <div class="info-item"><div class="info-icon">&#9203;</div><span>Takes about 5–10 minutes to complete</span></div>
+
+        <div class="info-item">
+          <div class="info-icon">&#128203;</div>
+          <span>Fill out your application information completely</span>
+        </div>
+
+        <div class="info-item">
+          <div class="info-icon">&#128274;</div>
+          <span>Your data is encrypted and secure</span>
+        </div>
+
+        <div class="info-item">
+          <div class="info-icon">&#9203;</div>
+          <span>Takes about 5–10 minutes to complete</span>
+        </div>
       </div>
-      <div class="secure-badge">&#128994; SSL Encrypted &amp; Secure</div>
+
+      <div class="secure-badge">
+        &#128994; SSL Encrypted &amp; Secure
+      </div>
     </aside>
 
-    <!-- Step 1: Form -->
     <div class="form-area" id="step-form">
       <div class="form-container">
         <div class="form-header">
           <h1>Application Form</h1>
           <p>Please fill out all required fields marked with *</p>
         </div>
+
         <div class="form-card">
           <div id="zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"></div>
         </div>
       </div>
     </div>
-
-    <!-- Step 2: IDV -->
-    <div id="step-idv">
-      <div class="idv-card">
-        <div class="idv-icon-wrap">&#128274;</div>
-        <div class="idv-title">Verify Your Identity</div>
-        <div class="idv-sub">Your application was submitted!<br>One last step — verify your identity to complete.</div>
-        <div class="idv-features">
-          <div class="idv-feature"><div class="feat-icon">&#128196;</div><span>Government-issued ID or Passport</span></div>
-          <div class="idv-feature"><div class="feat-icon">&#129333;</div><span>Quick selfie for face match</span></div>
-          <div class="idv-feature"><div class="feat-icon">&#9201;</div><span>Takes less than 2 minutes</span></div>
-        </div>
-        <button id="verify-btn" onclick="startIDV()">Start Identity Verification &rarr;</button>
-        <div class="plaid-badge">&#128274; Powered by <strong style="color:#000">Plaid</strong></div>
-      </div>
-    </div>
-
-    <!-- Step 3: Success -->
-    <div id="step-success">
-      <div class="success-card">
-        <div class="success-check">&#10003;</div>
-        <div style="font-size:22px;font-weight:700;margin-bottom:8px;">All Done!</div>
-        <div style="font-size:14px;color:#666;margin-bottom:4px;">Identity verified successfully.</div>
-        <div style="font-size:13px;color:#aaa;">Our team will review your application shortly.</div>
-        <div class="result-box" id="result-box"></div>
-      </div>
-    </div>
-
   </div>
 
-  <script type="text/javascript">
-  (function() {
-    try {
-      var f = document.createElement("iframe");
-      var ifrmSrc = 'https://forms.zohopublic.com/unitedtransports/form/test/formperma/pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ?zf_rszfm=1';
+  <script>
+    const VERIFY_ROUTE = "/verify";
+
+    function createApplicationId() {
+      const existingId = sessionStorage.getItem("application_id");
+
+      if (existingId) {
+        return existingId;
+      }
+
+      const newId = "app-" + Date.now();
+      sessionStorage.setItem("application_id", newId);
+
+      return newId;
+    }
+
+    function redirectToVerify() {
+      const applicationId = createApplicationId();
+
+      const verifyUrl =
+        VERIFY_ROUTE + "?application_id=" + encodeURIComponent(applicationId);
 
       try {
-        if (typeof ZFAdvLead != "undefined" && typeof zfutm_zfAdvLead != "undefined") {
-          for (var i = 0; i < ZFAdvLead.utmPNameArr.length; i++) {
-            var p = ZFAdvLead.utmPNameArr[i];
-            p = (ZFAdvLead.isSameDomian && ZFAdvLead.utmcustPNameArr.indexOf(p) == -1) ? "zf_" + p : p;
-            var v = zfutm_zfAdvLead.zfautm_gC_enc(ZFAdvLead.utmPNameArr[i]);
-            if (v) ifrmSrc += (ifrmSrc.indexOf('?') > 0 ? '&' : '?') + p + '=' + v;
-          }
-        }
-        if (typeof ZFLead !== "undefined" && typeof zfutm_zfLead !== "undefined") {
-          for (var i = 0; i < ZFLead.utmPNameArr.length; i++) {
-            var p = ZFLead.utmPNameArr[i];
-            var v = zfutm_zfLead.zfutm_gC_enc(ZFLead.utmPNameArr[i]);
-            if (v) ifrmSrc += (ifrmSrc.indexOf('?') > 0 ? '&' : '?') + p + '=' + v;
-          }
-        }
-        if (!((new RegExp("[?&]referrername=")).test(ifrmSrc))) {
-          var rfr = window.location.href;
-          try { rfr = window.self !== window.top ? window.top.location.href : (/^https?:\/\/[\w.-]+\.[a-zA-Z]{2,}/i.test(rfr) ? rfr : ""); } catch(e) {}
-          if (rfr) {
-            if (rfr.length > 1800) { var qi = rfr.indexOf('?'); if (qi > -1) rfr = rfr.substring(0, qi); if (rfr.length > 1800) rfr = rfr.substring(0, 1800); }
-            ifrmSrc += ((ifrmSrc.indexOf('?') > 0) ? '&' : '?') + 'referrername=' + encodeURIComponent(rfr);
-          }
-        }
-      } catch(e) {}
+        window.top.location.href = verifyUrl;
+      } catch (e) {
+        window.location.href = verifyUrl;
+      }
+    }
 
-      f.src = ifrmSrc;
-      f.style.border = "none";
-      f.style.height = "404px";
-      f.style.width = "100%";
-      f.style.transition = "all 0.5s ease";
-      f.setAttribute("aria-label", "Application");
+    (function () {
+      try {
+        const formContainer = document.getElementById(
+          "zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"
+        );
 
-      document.getElementById("zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ").appendChild(f);
+        const iframe = document.createElement("iframe");
 
-      window.addEventListener('message', function(event) {
-        var evntData = event.data;
-        if (evntData && evntData.constructor == String) {
-          var zf_ifrm_data = evntData.split("|");
-          if (zf_ifrm_data.length == 2 || zf_ifrm_data.length == 3) {
-            var zf_perma = zf_ifrm_data[0];
-            var zf_ifrm_ht_nw = (parseInt(zf_ifrm_data[1], 10) + 15) + "px";
-            var iframe = document.getElementById("zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ").getElementsByTagName("iframe")[0];
-            if (iframe && iframe.src.indexOf('formperma') > 0 && iframe.src.indexOf(zf_perma) > 0) {
-              var zf_tout = zf_ifrm_data.length == 3;
-              if (iframe.style.height !== zf_ifrm_ht_nw) {
-                if (zf_tout) {
-                  iframe.scrollIntoView();
-                  setTimeout(function() { iframe.style.height = zf_ifrm_ht_nw; }, 500);
-                } else {
-                  iframe.style.height = zf_ifrm_ht_nw;
-                }
-              }
-              // length == 3 means form submitted → go to IDV
-              if (zf_tout) {
-                setTimeout(goToIDV, 1000);
+        let ifrmSrc =
+          "https://forms.zohopublic.com/unitedtransports/form/test/formperma/pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ?zf_rszfm=1";
+
+        try {
+          if (
+            typeof ZFAdvLead !== "undefined" &&
+            typeof zfutm_zfAdvLead !== "undefined"
+          ) {
+            for (let i = 0; i < ZFAdvLead.utmPNameArr.length; i++) {
+              let p = ZFAdvLead.utmPNameArr[i];
+
+              p =
+                ZFAdvLead.isSameDomian &&
+                ZFAdvLead.utmcustPNameArr.indexOf(p) === -1
+                  ? "zf_" + p
+                  : p;
+
+              const v = zfutm_zfAdvLead.zfautm_gC_enc(
+                ZFAdvLead.utmPNameArr[i]
+              );
+
+              if (v) {
+                ifrmSrc +=
+                  (ifrmSrc.indexOf("?") > 0 ? "&" : "?") + p + "=" + v;
               }
             }
           }
-        }
-      }, false);
-    } catch(e) {}
-  })();
 
-  function goToIDV() {
-    if (document.getElementById('step-idv').style.display === 'flex') return;
-    document.getElementById('step-form').style.display = 'none';
-    document.getElementById('sidebar').style.display = 'none';
-    document.getElementById('step-idv').style.display = 'flex';
-    document.getElementById('ps1').classList.remove('active');
-    document.getElementById('ps1').classList.add('done');
-    document.getElementById('pl1').classList.add('done');
-    document.getElementById('ps2').classList.add('active');
-    window.scrollTo(0, 0);
-    // Auto start IDV after 800ms
-    setTimeout(startIDV, 800);
-  }
+          if (
+            typeof ZFLead !== "undefined" &&
+            typeof zfutm_zfLead !== "undefined"
+          ) {
+            for (let i = 0; i < ZFLead.utmPNameArr.length; i++) {
+              const p = ZFLead.utmPNameArr[i];
+              const v = zfutm_zfLead.zfutm_gC_enc(ZFLead.utmPNameArr[i]);
 
-  async function startIDV() {
-    var btn = document.getElementById('verify-btn');
-    btn.disabled = true;
-    btn.textContent = 'Opening Plaid...';
-    try {
-      const res = await fetch('/api/idv/create_link_token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: 'user-' + Date.now(), email: 'user@example.com' }),
-      });
-      const { link_token } = await res.json();
+              if (v) {
+                ifrmSrc +=
+                  (ifrmSrc.indexOf("?") > 0 ? "&" : "?") + p + "=" + v;
+              }
+            }
+          }
 
-      const handler = Plaid.create({
-        token: link_token,
-        onSuccess: async (public_token, metadata) => {
-          const result = await fetch('/api/idv/get_result', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idv_session_id: metadata.link_session_id }),
-          });
-          const crmData = await result.json();
-          document.getElementById('step-idv').style.display = 'none';
-          document.getElementById('step-success').style.display = 'flex';
-          document.getElementById('ps2').classList.remove('active');
-          document.getElementById('ps2').classList.add('done');
-          document.getElementById('pl2').classList.add('done');
-          document.getElementById('ps3').classList.add('active');
-          document.getElementById('result-box').textContent = JSON.stringify(crmData, null, 2);
-          window.scrollTo(0, 0);
-        },
-        onExit: (err) => {
-          btn.disabled = false;
-          btn.textContent = 'Start Identity Verification →';
-          if (err) console.error(err);
-        },
-      });
-      handler.open();
-    } catch(e) {
-      btn.disabled = false;
-      btn.textContent = 'Start Identity Verification →';
-      console.error(e);
-    }
-  }
+          if (!new RegExp("[?&]referrername=").test(ifrmSrc)) {
+            let referrer = window.location.href;
+
+            try {
+              referrer =
+                window.self !== window.top
+                  ? window.top.location.href
+                  : /^https?:\/\/[\w.-]+\.[a-zA-Z]{2,}/i.test(referrer)
+                    ? referrer
+                    : "";
+            } catch (e) {}
+
+            if (referrer) {
+              if (referrer.length > 1800) {
+                const queryIndex = referrer.indexOf("?");
+
+                if (queryIndex > -1) {
+                  referrer = referrer.substring(0, queryIndex);
+                }
+
+                if (referrer.length > 1800) {
+                  referrer = referrer.substring(0, 1800);
+                }
+              }
+
+              ifrmSrc +=
+                (ifrmSrc.indexOf("?") > 0 ? "&" : "?") +
+                "referrername=" +
+                encodeURIComponent(referrer);
+            }
+          }
+        } catch (e) {}
+
+        iframe.src = ifrmSrc;
+        iframe.style.border = "none";
+        iframe.style.height = "404px";
+        iframe.style.width = "100%";
+        iframe.style.transition = "all 0.5s ease";
+        iframe.setAttribute("aria-label", "Application");
+
+        formContainer.appendChild(iframe);
+
+        window.addEventListener(
+          "message",
+          function (event) {
+            const eventData = event.data;
+
+            if (eventData && eventData.constructor === String) {
+              const zfData = eventData.split("|");
+
+              if (zfData.length === 2 || zfData.length === 3) {
+                const zfPerma = zfData[0];
+                const zfHeight = parseInt(zfData[1], 10) + 15 + "px";
+
+                const formIframe = formContainer.getElementsByTagName("iframe")[0];
+
+                if (
+                  formIframe &&
+                  formIframe.src.indexOf("formperma") > 0 &&
+                  formIframe.src.indexOf(zfPerma) > 0
+                ) {
+                  const isSubmitted = zfData.length === 3;
+
+                  if (formIframe.style.height !== zfHeight) {
+                    if (isSubmitted) {
+                      formIframe.scrollIntoView();
+
+                      setTimeout(function () {
+                        formIframe.style.height = zfHeight;
+                      }, 500);
+                    } else {
+                      formIframe.style.height = zfHeight;
+                    }
+                  }
+
+                  if (isSubmitted) {
+                    setTimeout(function () {
+                      redirectToVerify();
+                    }, 1000);
+                  }
+                }
+              }
+            }
+          },
+          false
+        );
+      } catch (e) {
+        console.error("Zoho form load error:", e);
+      }
+    })();
   </script>
 </body>
 </html>
