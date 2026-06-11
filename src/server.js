@@ -1,8 +1,8 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 
 const {
   PlaidApi,
@@ -13,8 +13,6 @@ const {
 const app = express();
 
 const PORT = process.env.PORT || 3000;
-
-// server.js src ichida turgani uchun ../public ishlatamiz
 const publicPath = path.join(__dirname, "..", "public");
 
 app.use(cors());
@@ -33,10 +31,12 @@ const plaidClient = new PlaidApi(
   })
 );
 
+// Main Zoho Form page
 app.get("/", (req, res) => {
   res.sendFile(path.join(publicPath, "index.html"));
 });
 
+// IMPORTANT: /verify must open verify.html, not redirect to /?step=verify
 app.get("/verify", (req, res) => {
   res.sendFile(path.join(publicPath, "verify.html"));
 });
@@ -45,6 +45,7 @@ app.get("/complete", (req, res) => {
   res.sendFile(path.join(publicPath, "complete.html"));
 });
 
+// Create Plaid IDV link token
 app.post("/api/idv/create_link_token", async (req, res) => {
   try {
     const { application_id, user_id, email } = req.body;
@@ -77,6 +78,7 @@ app.post("/api/idv/create_link_token", async (req, res) => {
       link_token: response.data.link_token,
     });
   } catch (err) {
+    console.error("Plaid create link token error:");
     console.error(err.response?.data || err.message);
 
     res.status(500).json({
@@ -86,6 +88,7 @@ app.post("/api/idv/create_link_token", async (req, res) => {
   }
 });
 
+// Get Plaid IDV result
 app.post("/api/idv/get_result", async (req, res) => {
   try {
     const {
@@ -102,7 +105,7 @@ app.post("/api/idv/get_result", async (req, res) => {
 
     if (!verificationId) {
       return res.status(400).json({
-        message: "Missing identity_verification_id / idv_session_id",
+        message: "Missing identity_verification_id or idv_session_id",
       });
     }
 
@@ -131,8 +134,11 @@ app.post("/api/idv/get_result", async (req, res) => {
       risk_indicators: data.risk_check?.risk_indicators || null,
     };
 
+    console.log("Plaid IDV result:", crmData);
+
     res.json(crmData);
   } catch (err) {
+    console.error("Plaid get result error:");
     console.error(err.response?.data || err.message);
 
     res.status(500).json({
@@ -142,6 +148,7 @@ app.post("/api/idv/get_result", async (req, res) => {
   }
 });
 
+// Plaid webhook
 app.post("/api/webhook/plaid", async (req, res) => {
   try {
     const {
@@ -168,6 +175,7 @@ app.post("/api/webhook/plaid", async (req, res) => {
       received: true,
     });
   } catch (err) {
+    console.error("Plaid webhook error:");
     console.error(err.response?.data || err.message);
 
     res.status(500).json({

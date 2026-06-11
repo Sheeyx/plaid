@@ -93,10 +93,6 @@
       background: #e8e8e8;
     }
 
-    .progress-line.done {
-      background: #16a34a;
-    }
-
     .main {
       display: flex;
       min-height: calc(100vh - 60px);
@@ -191,6 +187,14 @@
       overflow: hidden;
     }
 
+    .redirecting {
+      display: none;
+      padding: 24px;
+      text-align: center;
+      font-size: 14px;
+      color: #666;
+    }
+
     @media (max-width: 768px) {
       .sidebar {
         display: none;
@@ -216,21 +220,21 @@
     <div class="logo">United <span>Transports</span></div>
 
     <div class="progress-wrap">
-      <div class="progress-step active" id="ps1">
+      <div class="progress-step active">
         <div class="progress-num">1</div>
         <span>Application</span>
       </div>
 
-      <div class="progress-line" id="pl1"></div>
+      <div class="progress-line"></div>
 
-      <div class="progress-step" id="ps2">
+      <div class="progress-step">
         <div class="progress-num">2</div>
         <span>Verify Identity</span>
       </div>
 
-      <div class="progress-line" id="pl2"></div>
+      <div class="progress-line"></div>
 
-      <div class="progress-step" id="ps3">
+      <div class="progress-step">
         <div class="progress-num">3</div>
         <span>Complete</span>
       </div>
@@ -238,7 +242,7 @@
   </nav>
 
   <div class="main">
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar">
       <div>
         <div class="sidebar-title">About this form</div>
 
@@ -263,7 +267,7 @@
       </div>
     </aside>
 
-    <div class="form-area" id="step-form">
+    <div class="form-area">
       <div class="form-container">
         <div class="form-header">
           <h1>Application Form</h1>
@@ -272,6 +276,10 @@
 
         <div class="form-card">
           <div id="zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"></div>
+
+          <div class="redirecting" id="redirecting">
+            Application submitted. Redirecting to identity verification...
+          </div>
         </div>
       </div>
     </div>
@@ -298,6 +306,8 @@
 
       const verifyUrl =
         VERIFY_ROUTE + "?application_id=" + encodeURIComponent(applicationId);
+
+      document.getElementById("redirecting").style.display = "block";
 
       try {
         window.top.location.href = verifyUrl;
@@ -411,7 +421,8 @@
                 const zfPerma = zfData[0];
                 const zfHeight = parseInt(zfData[1], 10) + 15 + "px";
 
-                const formIframe = formContainer.getElementsByTagName("iframe")[0];
+                const formIframe =
+                  formContainer.getElementsByTagName("iframe")[0];
 
                 if (
                   formIframe &&
@@ -435,7 +446,7 @@
                   if (isSubmitted) {
                     setTimeout(function () {
                       redirectToVerify();
-                    }, 1000);
+                    }, 800);
                   }
                 }
               }

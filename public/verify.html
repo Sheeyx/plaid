@@ -301,7 +301,6 @@
     const GET_RESULT_API = "/api/idv/get_result";
     const COMPLETE_ROUTE = "/complete";
 
-    let plaidHandler = null;
     let isOpening = false;
 
     function getApplicationId() {
@@ -357,12 +356,12 @@
         const response = await fetch(CREATE_LINK_TOKEN_API, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             application_id: applicationId,
-            user_id: applicationId
-          })
+            user_id: applicationId,
+          }),
         });
 
         const data = await response.json();
@@ -372,10 +371,10 @@
         }
 
         if (!data.link_token) {
-          throw new Error("Plaid link_token not found in server response.");
+          throw new Error("Plaid link_token not found.");
         }
 
-        plaidHandler = Plaid.create({
+        const handler = Plaid.create({
           token: data.link_token,
 
           onLoad: function () {
@@ -387,21 +386,20 @@
               const resultResponse = await fetch(GET_RESULT_API, {
                 method: "POST",
                 headers: {
-                  "Content-Type": "application/json"
+                  "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
                   application_id: applicationId,
                   idv_session_id: metadata.link_session_id,
-                  public_token: public_token || null,
-                  metadata: metadata
-                })
+                  metadata: metadata,
+                }),
               });
 
               const resultData = await resultResponse.json();
 
               if (!resultResponse.ok) {
                 throw new Error(
-                  resultData.message || "Failed to save Plaid verification result."
+                  resultData.message || "Failed to save Plaid result."
                 );
               }
 
@@ -411,8 +409,9 @@
                 encodeURIComponent(applicationId);
             } catch (error) {
               console.error(error);
+
               showError(
-                "Identity verification was completed, but we could not save the result. Please contact support."
+                "Verification completed, but result could not be saved. Please contact support."
               );
 
               isOpening = false;
@@ -434,10 +433,10 @@
 
           onEvent: function (eventName, metadata) {
             console.log("Plaid event:", eventName, metadata);
-          }
+          },
         });
 
-        plaidHandler.open();
+        handler.open();
       } catch (error) {
         console.error(error);
 
