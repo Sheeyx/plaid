@@ -12,16 +12,25 @@ const {
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5009;
 const publicPath = path.join(__dirname, "..", "public");
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(publicPath));
+
+const plaidEnv = process.env.PLAID_ENV || "sandbox";
+
+if (!PlaidEnvironments[plaidEnv]) {
+  throw new Error(
+    `Invalid PLAID_ENV: ${plaidEnv}. Use sandbox, development, or production.`
+  );
+}
 
 const plaidClient = new PlaidApi(
   new Configuration({
-    basePath: PlaidEnvironments[process.env.PLAID_ENV],
+    basePath: PlaidEnvironments[plaidEnv],
     baseOptions: {
       headers: {
         "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID,
@@ -31,40 +40,99 @@ const plaidClient = new PlaidApi(
   })
 );
 
-// Main Zoho Form page
+/**
+ * Main page
+ *
+ * CRM emaildagi link:
+ * http://72.60.110.4:5009/?token=CRM_GENERATED_TOKEN
+ */
 app.get("/", (req, res) => {
   res.sendFile(path.join(publicPath, "index.html"));
 });
 
-// IMPORTANT: /verify must open verify.html, not redirect to /?step=verify
+/**
+ * Zoho Form submitdan keyin ochiladigan page.
+ * Bu page tokenni olib /verify?token=... ga redirect qiladi.
+ */
+app.get("/zoho-submitted", (req, res) => {
+  res.sendFile(path.join(publicPath, "zoho-submitted.html"));
+});
+
+/**
+ * Plaid verification page
+ *
+ * URL:
+ * http://72.60.110.4:5009/verify?token=CRM_GENERATED_TOKEN
+ */
 app.get("/verify", (req, res) => {
   res.sendFile(path.join(publicPath, "verify.html"));
 });
 
+/**
+ * Success page
+ */
 app.get("/complete", (req, res) => {
   res.sendFile(path.join(publicPath, "complete.html"));
 });
 
-// Create Plaid IDV link token
+/**
+ * Health check
+ */
+app.get("/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "Server is running",
+    plaid_env: plaidEnv,
+  });
+});
+
+/**
+ * Create Plaid Link Token
+ *
+ * Frontenddan keladi:
+ * {
+ *   "token": "CRM_GENERATED_TOKEN"
+ * }
+ *
+ * Muhim:
+ * client_user_id = token
+ *
+ * Keyin Plaid webhook Zoho Deluge functionga boradi.
+ * Deluge Plaid API'dan result oladi va:
+ *
+ * plaidResponse.get("client_user_id")
+ *
+ * orqali shu tokenni oladi.
+ *
+ * CRM Lead qidirish:
+ * Leads.Plaid_Token = client_user_id
+ */
 app.post("/api/idv/create_link_token", async (req, res) => {
   try {
-    const { application_id, user_id, email } = req.body;
+    console.log("==== CREATE LINK TOKEN REQUEST ====");
+    console.log("Request body:", req.body);
+    console.log("PLAID_ENV:", process.env.PLAID_ENV);
+    console.log("PLAID_IDV_TEMPLATE_ID:", process.env.PLAID_IDV_TEMPLATE_ID);
+    console.log("PLAID_CLIENT_ID exists:", !!process.env.PLAID_CLIENT_ID);
+    console.log("PLAID_SECRET exists:", !!process.env.PLAID_SECRET);
 
-    const clientUserId =
-      user_id ||
-      application_id ||
-      "user-" + Date.now();
+    const { token } = req.body;
 
-    const user = {
-      client_user_id: clientUserId,
-    };
+    if (!token || String(token).trim() === "") {
+      console.log("ERROR: token is missing");
 
-    if (email) {
-      user.email_address = email;
+      return res.status(400).json({
+        success: false,
+        message: "token is required",
+      });
     }
 
+    const crmToken = String(token).trim();
+
     const response = await plaidClient.linkTokenCreate({
-      user,
+      user: {
+        client_user_id: crmToken,
+      },
       client_name: "United Transports",
       products: ["identity_verification"],
       identity_verification: {
@@ -74,112 +142,21 @@ app.post("/api/idv/create_link_token", async (req, res) => {
       language: "en",
     });
 
+    console.log("Plaid link token created successfully");
+
     res.json({
+      success: true,
       link_token: response.data.link_token,
     });
   } catch (err) {
-    console.error("Plaid create link token error:");
-    console.error(err.response?.data || err.message);
+    console.log("==== PLAID ERROR ====");
+    console.log("Error message:", err.message);
+    console.log("Plaid response data:", err.response?.data);
+    console.log("Plaid status:", err.response?.status);
 
     res.status(500).json({
+      success: false,
       message: "Failed to create Plaid link token",
-      error: err.response?.data || err.message,
-    });
-  }
-});
-
-// Get Plaid IDV result
-app.post("/api/idv/get_result", async (req, res) => {
-  try {
-    const {
-      application_id,
-      idv_session_id,
-      identity_verification_id,
-      metadata,
-    } = req.body;
-
-    const verificationId =
-      identity_verification_id ||
-      idv_session_id ||
-      metadata?.link_session_id;
-
-    if (!verificationId) {
-      return res.status(400).json({
-        message: "Missing identity_verification_id or idv_session_id",
-      });
-    }
-
-    const response = await plaidClient.identityVerificationGet({
-      identity_verification_id: verificationId,
-    });
-
-    const data = response.data;
-
-    const crmData = {
-      application_id,
-
-      idv_result: data.status,
-      idv_key: data.id,
-      request_id: data.request_id,
-
-      name: data.kyc_check?.name?.summary || null,
-      dob: data.kyc_check?.date_of_birth?.summary || null,
-      address: data.kyc_check?.address?.summary || null,
-
-      phone: data.user?.phone_number || null,
-      email: data.user?.email_address || null,
-
-      ip_address: data.risk_check?.behavior?.ip_address || null,
-      trust_index: data.risk_check?.risk_level || null,
-      risk_indicators: data.risk_check?.risk_indicators || null,
-    };
-
-    console.log("Plaid IDV result:", crmData);
-
-    res.json(crmData);
-  } catch (err) {
-    console.error("Plaid get result error:");
-    console.error(err.response?.data || err.message);
-
-    res.status(500).json({
-      message: "Failed to get Plaid verification result",
-      error: err.response?.data || err.message,
-    });
-  }
-});
-
-// Plaid webhook
-app.post("/api/webhook/plaid", async (req, res) => {
-  try {
-    const {
-      webhook_type,
-      webhook_code,
-      identity_verification_id,
-    } = req.body;
-
-    console.log("Plaid webhook:", req.body);
-
-    if (
-      webhook_type === "IDENTITY_VERIFICATION" &&
-      webhook_code === "STATUS_UPDATED" &&
-      identity_verification_id
-    ) {
-      const response = await plaidClient.identityVerificationGet({
-        identity_verification_id,
-      });
-
-      console.log("IDV status:", response.data.status);
-    }
-
-    res.json({
-      received: true,
-    });
-  } catch (err) {
-    console.error("Plaid webhook error:");
-    console.error(err.response?.data || err.message);
-
-    res.status(500).json({
-      received: false,
       error: err.response?.data || err.message,
     });
   }

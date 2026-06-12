@@ -208,6 +208,7 @@
       border-radius: 8px;
       font-size: 13px;
       text-align: left;
+      word-break: break-word;
     }
 
     @media (max-width: 768px) {
@@ -306,12 +307,18 @@
       const params = new URLSearchParams(window.location.search);
       const tokenFromUrl = params.get("token");
 
-      if (tokenFromUrl) {
-        sessionStorage.setItem("plaid_token", tokenFromUrl);
-        return tokenFromUrl;
+      if (tokenFromUrl && tokenFromUrl.trim() !== "") {
+        sessionStorage.setItem("plaid_token", tokenFromUrl.trim());
+        return tokenFromUrl.trim();
       }
 
-      return sessionStorage.getItem("plaid_token");
+      const tokenFromSession = sessionStorage.getItem("plaid_token");
+
+      if (tokenFromSession && tokenFromSession.trim() !== "") {
+        return tokenFromSession.trim();
+      }
+
+      return null;
     }
 
     function showError(message) {
@@ -335,6 +342,30 @@
         : "Start Identity Verification →";
     }
 
+    function extractErrorMessage(data) {
+      if (!data) {
+        return "Failed to create Plaid link token";
+      }
+
+      if (data.error && data.error.error_message) {
+        return data.error.error_message;
+      }
+
+      if (data.error && data.error.display_message) {
+        return data.error.display_message;
+      }
+
+      if (data.error && typeof data.error === "string") {
+        return data.error;
+      }
+
+      if (data.message) {
+        return data.message;
+      }
+
+      return "Failed to create Plaid link token";
+    }
+
     async function startIDV() {
       if (isOpening) {
         return;
@@ -342,8 +373,15 @@
 
       const token = getToken();
 
+      console.log("Current verification token:", token);
+
       if (!token) {
         showError("Verification token is missing. Please open the original link from your email.");
+        return;
+      }
+
+      if (typeof Plaid === "undefined") {
+        showError("Plaid SDK failed to load. Please refresh the page.");
         return;
       }
 
@@ -352,6 +390,8 @@
       setButtonLoading(true);
 
       try {
+        console.log("Sending token to backend:", token);
+
         const response = await fetch(CREATE_LINK_TOKEN_API, {
           method: "POST",
           headers: {
@@ -362,35 +402,52 @@
           }),
         });
 
-        const data = await response.json();
+        let data = null;
+
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          console.error("Could not parse backend JSON response:", jsonError);
+          throw new Error("Server returned invalid response.");
+        }
+
+        console.log("Create link token response status:", response.status);
+        console.log("Create link token response data:", data);
 
         if (!response.ok) {
-          throw new Error(data.message || "Failed to create Plaid link token.");
+          const errorMessage = extractErrorMessage(data);
+          console.error("Backend returned error:", data);
+          throw new Error(errorMessage);
         }
 
         if (!data.link_token) {
-          throw new Error("Plaid link_token not found.");
+          console.error("No link_token in backend response:", data);
+          throw new Error("Plaid link_token not found in backend response.");
         }
 
         const handler = Plaid.create({
           token: data.link_token,
 
+          onLoad: function () {
+            console.log("Plaid loaded");
+          },
+
           onSuccess: function (public_token, metadata) {
-            console.log("Plaid success:", metadata);
+            console.log("Plaid success metadata:", metadata);
 
             /*
-              Bu yerda backendga result yubormaymiz.
-              Plaid webhook → Zoho Deluge function → Lead update.
+              Backendga result yubormaymiz.
+              Plaid webhook → Zoho Deluge function → Lead update qiladi.
             */
             window.location.href =
               COMPLETE_ROUTE + "?token=" + encodeURIComponent(token);
           },
 
           onExit: function (err, metadata) {
-            console.log("Plaid exited:", metadata);
+            console.log("Plaid exited metadata:", metadata);
 
             if (err) {
-              console.error("Plaid error:", err);
+              console.error("Plaid exit error:", err);
               showError("Verification was cancelled or failed. Please try again.");
             }
 
@@ -405,7 +462,7 @@
 
         handler.open();
       } catch (error) {
-        console.error(error);
+        console.error("startIDV error:", error);
 
         showError(error.message || "Could not start Plaid. Please try again.");
 
@@ -415,6 +472,13 @@
     }
 
     window.addEventListener("load", function () {
+      const token = getToken();
+
+      if (!token) {
+        showError("Verification token is missing. Please open the original link from your email.");
+        return;
+      }
+
       setTimeout(function () {
         startIDV();
       }, 500);
