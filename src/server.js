@@ -102,6 +102,9 @@ app.get("/health", (req, res) => {
   });
 });
 
+ console.log("Token from frontend:", crmToken);
+    console.log("PLAID_ENV:", plaidEnv);
+    console.log("Using PLAID_IDV_TEMPLATE_ID:", plaidTemplateId);
 /**
  * Create Plaid Link Token
  *
@@ -136,10 +139,6 @@ app.post("/api/idv/create_link_token", async (req, res) => {
     }
 
     const crmToken = String(token).trim();
-
-    console.log("Token from frontend:", crmToken);
-    console.log("PLAID_ENV:", plaidEnv);
-    console.log("Using PLAID_IDV_TEMPLATE_ID:", plaidTemplateId);
 
     const response = await plaidClient.linkTokenCreate({
       user: {
