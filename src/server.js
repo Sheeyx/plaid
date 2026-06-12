@@ -12,7 +12,7 @@ const {
 
 const app = express();
 
-const PORT = process.env.PORT || 5009;
+const PORT = process.env.PORT || 3000;
 const publicPath = path.join(__dirname, "..", "public");
 
 app.use(cors());
@@ -20,7 +20,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(publicPath));
 
-const plaidEnv = process.env.PLAID_ENV || "sandbox";
+const plaidEnv = (process.env.PLAID_ENV || "sandbox").trim();
+const plaidClientId = (process.env.PLAID_CLIENT_ID || "").trim();
+const plaidSecret = (process.env.PLAID_SECRET || "").trim();
+const plaidTemplateId = (process.env.PLAID_IDV_TEMPLATE_ID || "").trim();
+
+console.log("==== ENV CHECK ====");
+console.log("PLAID_ENV:", plaidEnv);
+console.log("PLAID_IDV_TEMPLATE_ID:", plaidTemplateId);
+console.log("PLAID_CLIENT_ID exists:", !!plaidClientId);
+console.log("PLAID_SECRET exists:", !!plaidSecret);
+console.log("PORT:", PORT);
+console.log("===================");
 
 if (!PlaidEnvironments[plaidEnv]) {
   throw new Error(
@@ -28,13 +39,25 @@ if (!PlaidEnvironments[plaidEnv]) {
   );
 }
 
+if (!plaidClientId) {
+  throw new Error("PLAID_CLIENT_ID is missing in .env");
+}
+
+if (!plaidSecret) {
+  throw new Error("PLAID_SECRET is missing in .env");
+}
+
+if (!plaidTemplateId) {
+  throw new Error("PLAID_IDV_TEMPLATE_ID is missing in .env");
+}
+
 const plaidClient = new PlaidApi(
   new Configuration({
     basePath: PlaidEnvironments[plaidEnv],
     baseOptions: {
       headers: {
-        "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID,
-        "PLAID-SECRET": process.env.PLAID_SECRET,
+        "PLAID-CLIENT-ID": plaidClientId,
+        "PLAID-SECRET": plaidSecret,
       },
     },
   })
@@ -43,33 +66,25 @@ const plaidClient = new PlaidApi(
 /**
  * Main page
  *
- * CRM emaildagi link:
- * http://72.60.110.4:5009/?token=CRM_GENERATED_TOKEN
+ * CRM email link example:
+ * http://72.60.110.4:3000/?token=bce15a07-f82d-4643-b469-d28f70a51ecb
  */
 app.get("/", (req, res) => {
   res.sendFile(path.join(publicPath, "index.html"));
 });
 
 /**
- * Zoho Form submitdan keyin ochiladigan page.
- * Bu page tokenni olib /verify?token=... ga redirect qiladi.
- */
-app.get("/zoho-submitted", (req, res) => {
-  res.sendFile(path.join(publicPath, "zoho-submitted.html"));
-});
-
-/**
- * Plaid verification page
+ * Plaid verify page
  *
- * URL:
- * http://72.60.110.4:5009/verify?token=CRM_GENERATED_TOKEN
+ * Example:
+ * http://72.60.110.4:3000/verify?token=bce15a07-f82d-4643-b469-d28f70a51ecb
  */
 app.get("/verify", (req, res) => {
   res.sendFile(path.join(publicPath, "verify.html"));
 });
 
 /**
- * Success page
+ * Complete page
  */
 app.get("/complete", (req, res) => {
   res.sendFile(path.join(publicPath, "complete.html"));
@@ -83,38 +98,31 @@ app.get("/health", (req, res) => {
     success: true,
     message: "Server is running",
     plaid_env: plaidEnv,
+    plaid_template_id: plaidTemplateId,
   });
 });
 
 /**
  * Create Plaid Link Token
  *
- * Frontenddan keladi:
+ * Frontend sends:
  * {
  *   "token": "CRM_GENERATED_TOKEN"
  * }
  *
- * Muhim:
- * client_user_id = token
+ * Plaid receives:
+ * user.client_user_id = CRM_GENERATED_TOKEN
  *
- * Keyin Plaid webhook Zoho Deluge functionga boradi.
- * Deluge Plaid API'dan result oladi va:
- *
- * plaidResponse.get("client_user_id")
- *
- * orqali shu tokenni oladi.
- *
- * CRM Lead qidirish:
- * Leads.Plaid_Token = client_user_id
+ * Later:
+ * Plaid webhook -> Zoho Deluge
+ * Zoho Deluge calls Plaid /identity_verification/get
+ * Deluge gets plaidResponse.client_user_id
+ * Deluge searches Lead where Plaid_Token = client_user_id
  */
 app.post("/api/idv/create_link_token", async (req, res) => {
   try {
     console.log("==== CREATE LINK TOKEN REQUEST ====");
     console.log("Request body:", req.body);
-    console.log("PLAID_ENV:", process.env.PLAID_ENV);
-    console.log("PLAID_IDV_TEMPLATE_ID:", process.env.PLAID_IDV_TEMPLATE_ID);
-    console.log("PLAID_CLIENT_ID exists:", !!process.env.PLAID_CLIENT_ID);
-    console.log("PLAID_SECRET exists:", !!process.env.PLAID_SECRET);
 
     const { token } = req.body;
 
@@ -129,6 +137,10 @@ app.post("/api/idv/create_link_token", async (req, res) => {
 
     const crmToken = String(token).trim();
 
+    console.log("Token from frontend:", crmToken);
+    console.log("PLAID_ENV:", plaidEnv);
+    console.log("Using PLAID_IDV_TEMPLATE_ID:", plaidTemplateId);
+
     const response = await plaidClient.linkTokenCreate({
       user: {
         client_user_id: crmToken,
@@ -136,23 +148,26 @@ app.post("/api/idv/create_link_token", async (req, res) => {
       client_name: "United Transports",
       products: ["identity_verification"],
       identity_verification: {
-        template_id: process.env.PLAID_IDV_TEMPLATE_ID,
+        template_id: plaidTemplateId,
       },
       country_codes: ["US"],
       language: "en",
     });
 
     console.log("Plaid link token created successfully");
+    console.log("Plaid request_id:", response.data.request_id);
 
     res.json({
       success: true,
       link_token: response.data.link_token,
+      request_id: response.data.request_id,
     });
   } catch (err) {
     console.log("==== PLAID ERROR ====");
     console.log("Error message:", err.message);
-    console.log("Plaid response data:", err.response?.data);
     console.log("Plaid status:", err.response?.status);
+    console.log("Plaid response data:", err.response?.data);
+    console.log("=====================");
 
     res.status(500).json({
       success: false,
