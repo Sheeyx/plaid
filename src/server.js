@@ -102,7 +102,6 @@ app.get("/health", (req, res) => {
   });
 });
 
- console.log("Token from frontend:", crmToken);
     console.log("PLAID_ENV:", plaidEnv);
     console.log("Using PLAID_IDV_TEMPLATE_ID:", plaidTemplateId);
 /**
