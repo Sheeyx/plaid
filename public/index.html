@@ -293,16 +293,30 @@
     const ZOHO_FORM_BASE_URL =
       "https://forms.zohopublic.com/unitedtransports/form/test/formperma/pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ?zf_rszfm=1";
 
+    /**
+     * Always reads token from URL first.
+     * If a NEW token is in the URL, clears all stale session data before storing it.
+     * Returns null (never falls back to session) to force strict URL-based token flow.
+     */
     function getToken() {
       const params = new URLSearchParams(window.location.search);
       const tokenFromUrl = params.get("token");
 
-      if (tokenFromUrl) {
-        sessionStorage.setItem("plaid_token", tokenFromUrl);
-        return tokenFromUrl;
+      if (tokenFromUrl && tokenFromUrl.trim() !== "") {
+        const newToken = tokenFromUrl.trim();
+        const existingToken = sessionStorage.getItem("plaid_token");
+
+        // New token detected — wipe all stale session state
+        if (existingToken !== newToken) {
+          sessionStorage.clear();
+        }
+
+        sessionStorage.setItem("plaid_token", newToken);
+        return newToken;
       }
 
-      return sessionStorage.getItem("plaid_token");
+      // No token in URL — do NOT fall back to session; show error
+      return null;
     }
 
     function showMissingTokenError() {
@@ -316,20 +330,12 @@
 
     function buildZohoFormUrl(token) {
       const url = new URL(ZOHO_FORM_BASE_URL);
-
-      /*
-        Zoho Form ichida hidden field bo'lishi kerak:
-
-        Field Name: Plaid Token
-        Field Link Name / Alias: Plaid_Token
-      */
       url.searchParams.set("Plaid_Token", token);
-
       return url.toString();
     }
 
     function redirectToVerify() {
-      const token = getToken();
+      const token = sessionStorage.getItem("plaid_token");
 
       if (!token) {
         showMissingTokenError();

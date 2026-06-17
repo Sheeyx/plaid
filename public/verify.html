@@ -303,21 +303,30 @@
 
     let isOpening = false;
 
+    /**
+     * Always requires token to be in the URL.
+     * If a NEW token is detected, clears all stale session state (including
+     * any previous plaid_completed flag) so the full flow runs fresh.
+     * Returns null if no token is in the URL — never falls back to session.
+     */
     function getToken() {
       const params = new URLSearchParams(window.location.search);
       const tokenFromUrl = params.get("token");
 
       if (tokenFromUrl && tokenFromUrl.trim() !== "") {
-        sessionStorage.setItem("plaid_token", tokenFromUrl.trim());
-        return tokenFromUrl.trim();
+        const newToken = tokenFromUrl.trim();
+        const existingToken = sessionStorage.getItem("plaid_token");
+
+        // New token — wipe all stale session state
+        if (existingToken !== newToken) {
+          sessionStorage.clear();
+        }
+
+        sessionStorage.setItem("plaid_token", newToken);
+        return newToken;
       }
 
-      const tokenFromSession = sessionStorage.getItem("plaid_token");
-
-      if (tokenFromSession && tokenFromSession.trim() !== "") {
-        return tokenFromSession.trim();
-      }
-
+      // No token in URL — return null to force an error
       return null;
     }
 
@@ -335,7 +344,6 @@
 
     function setButtonLoading(isLoading) {
       const btn = document.getElementById("verify-btn");
-
       btn.disabled = isLoading;
       btn.textContent = isLoading
         ? "Opening Plaid..."
@@ -343,33 +351,16 @@
     }
 
     function extractErrorMessage(data) {
-      if (!data) {
-        return "Failed to create Plaid link token";
-      }
-
-      if (data.error && data.error.error_message) {
-        return data.error.error_message;
-      }
-
-      if (data.error && data.error.display_message) {
-        return data.error.display_message;
-      }
-
-      if (data.error && typeof data.error === "string") {
-        return data.error;
-      }
-
-      if (data.message) {
-        return data.message;
-      }
-
+      if (!data) return "Failed to create Plaid link token";
+      if (data.error && data.error.error_message) return data.error.error_message;
+      if (data.error && data.error.display_message) return data.error.display_message;
+      if (data.error && typeof data.error === "string") return data.error;
+      if (data.message) return data.message;
       return "Failed to create Plaid link token";
     }
 
     async function startIDV() {
-      if (isOpening) {
-        return;
-      }
+      if (isOpening) return;
 
       const token = getToken();
 
@@ -377,6 +368,12 @@
 
       if (!token) {
         showError("Verification token is missing. Please open the original link from your email.");
+        return;
+      }
+
+      // Guard: if this exact token already completed, redirect immediately
+      if (sessionStorage.getItem("plaid_completed") === token) {
+        window.location.href = COMPLETE_ROUTE + "?token=" + encodeURIComponent(token);
         return;
       }
 
@@ -394,12 +391,8 @@
 
         const response = await fetch(CREATE_LINK_TOKEN_API, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token: token,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: token }),
         });
 
         let data = null;
@@ -435,12 +428,10 @@
           onSuccess: function (public_token, metadata) {
             console.log("Plaid success metadata:", metadata);
 
-            /*
-              Backendga result yubormaymiz.
-              Plaid webhook → Zoho Deluge function → Lead update qiladi.
-            */
-            window.location.href =
-              COMPLETE_ROUTE + "?token=" + encodeURIComponent(token);
+            // Mark this token as completed so re-visits skip straight to /complete
+            sessionStorage.setItem("plaid_completed", token);
+
+            window.location.href = COMPLETE_ROUTE + "?token=" + encodeURIComponent(token);
           },
 
           onExit: function (err, metadata) {
@@ -463,9 +454,7 @@
         handler.open();
       } catch (error) {
         console.error("startIDV error:", error);
-
         showError(error.message || "Could not start Plaid. Please try again.");
-
         isOpening = false;
         setButtonLoading(false);
       }
@@ -476,6 +465,12 @@
 
       if (!token) {
         showError("Verification token is missing. Please open the original link from your email.");
+        return;
+      }
+
+      // Guard: if already completed with this token, skip straight to /complete
+      if (sessionStorage.getItem("plaid_completed") === token) {
+        window.location.href = COMPLETE_ROUTE + "?token=" + encodeURIComponent(token);
         return;
       }
 
