@@ -34,22 +34,11 @@ console.log("PORT:", PORT);
 console.log("===================");
 
 if (!PlaidEnvironments[plaidEnv]) {
-  throw new Error(
-    `Invalid PLAID_ENV: ${plaidEnv}. Use sandbox, development, or production.`
-  );
+  throw new Error(`Invalid PLAID_ENV: ${plaidEnv}. Use sandbox, development, or production.`);
 }
-
-if (!plaidClientId) {
-  throw new Error("PLAID_CLIENT_ID is missing in .env");
-}
-
-if (!plaidSecret) {
-  throw new Error("PLAID_SECRET is missing in .env");
-}
-
-if (!plaidTemplateId) {
-  throw new Error("PLAID_IDV_TEMPLATE_ID is missing in .env");
-}
+if (!plaidClientId) throw new Error("PLAID_CLIENT_ID is missing in .env");
+if (!plaidSecret) throw new Error("PLAID_SECRET is missing in .env");
+if (!plaidTemplateId) throw new Error("PLAID_IDV_TEMPLATE_ID is missing in .env");
 
 const plaidClient = new PlaidApi(
   new Configuration({
@@ -84,6 +73,9 @@ app.get("/health", (req, res) => {
   });
 });
 
+/**
+ * Create Plaid Link Token
+ */
 app.post("/api/idv/create_link_token", async (req, res) => {
   try {
     console.log("\n==== CREATE LINK TOKEN REQUEST ====");
@@ -94,23 +86,22 @@ app.post("/api/idv/create_link_token", async (req, res) => {
 
     if (!token || String(token).trim() === "") {
       console.log("ERROR: token is missing");
-      return res.status(400).json({
-        success: false,
-        message: "token is required",
-      });
+      return res.status(400).json({ success: false, message: "token is required" });
     }
 
     const crmToken = String(token).trim();
 
+    // Har safar yangi unique ID — eski failed session qaytarilmaydi
+    const clientUserId = crmToken + "_" + Date.now();
+
     console.log("--- TOKEN DEBUG ---");
-    console.log("CRM Token (raw):", crmToken);
-    console.log("CRM Token length:", crmToken.length);
-    console.log("client_user_id to Plaid:", crmToken);
+    console.log("CRM Token:", crmToken);
+    console.log("client_user_id to Plaid:", clientUserId);
     console.log("-------------------");
 
     const response = await plaidClient.linkTokenCreate({
       user: {
-        client_user_id: crmToken,
+        client_user_id: clientUserId,
       },
       client_name: "United Transports",
       products: ["identity_verification"],
@@ -142,6 +133,42 @@ app.post("/api/idv/create_link_token", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to create Plaid link token",
+      error: err.response?.data || err.message,
+    });
+  }
+});
+
+/**
+ * Get IDV result from Plaid
+ */
+app.post("/api/idv/get", async (req, res) => {
+  try {
+    const { identity_verification_id } = req.body;
+
+    console.log("\n==== IDV GET REQUEST ====");
+    console.log("Timestamp:", new Date().toISOString());
+    console.log("identity_verification_id:", identity_verification_id);
+
+    const response = await plaidClient.identityVerificationGet({
+      identity_verification_id: identity_verification_id,
+    });
+
+    console.log("==== IDV GET RESPONSE ====");
+    console.log(JSON.stringify(response.data, null, 2));
+    console.log("==========================\n");
+
+    res.json({
+      success: true,
+      data: response.data,
+    });
+  } catch (err) {
+    console.log("\n==== IDV GET ERROR ====");
+    console.log("Timestamp:", new Date().toISOString());
+    console.log("Error:", err.response?.data || err.message);
+    console.log("=======================\n");
+
+    res.status(500).json({
+      success: false,
       error: err.response?.data || err.message,
     });
   }
