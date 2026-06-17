@@ -280,12 +280,6 @@
 
     let isOpening = false;
 
-    /**
-     * Token olish:
-     * 1. Avval URL'dan qara (to'g'ridan-to'g'ri /verify?token=XXX kelgan bo'lsa)
-     * 2. URL'da yo'q — sessionStorage dan o'qi (index.html saqlagan)
-     * 3. Ikkalasida ham yo'q — null
-     */
     function getToken() {
       const params = new URLSearchParams(window.location.search);
       const tokenFromUrl = params.get("token");
@@ -302,7 +296,6 @@
         return newToken;
       }
 
-      // index.html dan kelgan — sessiondan o'qi
       return sessionStorage.getItem("plaid_token") || null;
     }
 
@@ -340,7 +333,10 @@
 
       const token = getToken();
 
-      console.log("Current verification token:", token);
+      console.log("\n=== START IDV ===");
+      console.log("Timestamp:", new Date().toISOString());
+      console.log("Token:", token);
+      console.log("=================\n");
 
       if (!token) {
         showError("Verification token is missing. Please open the original link from your email.");
@@ -371,8 +367,10 @@
           throw new Error("Server returned invalid response.");
         }
 
-        console.log("Create link token response status:", response.status);
-        console.log("Create link token response data:", data);
+        console.log("\n=== LINK TOKEN RESPONSE ===");
+        console.log("Status:", response.status);
+        console.log("Data:", data);
+        console.log("===========================\n");
 
         if (!response.ok) {
           throw new Error(extractErrorMessage(data));
@@ -386,20 +384,28 @@
           token: data.link_token,
 
           onLoad: function () {
-            console.log("Plaid loaded");
+            console.log("\n=== PLAID LOADED ===\n");
           },
 
           onSuccess: function (public_token, metadata) {
-            console.log("Plaid success metadata:", metadata);
+            console.log("\n=== PLAID ON_SUCCESS ===");
+            console.log("Timestamp:", new Date().toISOString());
+            console.log("public_token:", public_token);
+            console.log("link_session_id:", metadata?.link_session_id);
+            console.log("status:", metadata?.status);
+            console.log("Full metadata:", JSON.stringify(metadata, null, 2));
+            console.log("========================\n");
 
-            // Flow tugadi — sessionni tozala
             sessionStorage.clear();
-
             window.location.href = COMPLETE_ROUTE;
           },
 
           onExit: function (err, metadata) {
-            console.log("Plaid exited:", err, metadata);
+            console.log("\n=== PLAID ON_EXIT ===");
+            console.log("Timestamp:", new Date().toISOString());
+            console.log("Error:", err);
+            console.log("Metadata:", JSON.stringify(metadata, null, 2));
+            console.log("=====================\n");
 
             if (err) {
               showError("Verification was cancelled or failed. Please try again.");
@@ -410,30 +416,41 @@
           },
 
           onEvent: function (eventName, metadata) {
-            console.log("Plaid event:", eventName, metadata);
+            console.log("\n=== PLAID EVENT ===");
+            console.log("Event:", eventName);
+            console.log("view_name:", metadata?.view_name);
+            console.log("exit_status:", metadata?.exit_status);
+            console.log("link_session_id:", metadata?.link_session_id);
+            console.log("Full metadata:", JSON.stringify(metadata, null, 2));
+            console.log("===================\n");
           },
         });
 
         handler.open();
       } catch (error) {
-        console.error("startIDV error:", error);
+        console.error("\n=== START IDV ERROR ===");
+        console.error("Error:", error);
+        console.error("=======================\n");
         showError(error.message || "Could not start Plaid. Please try again.");
         isOpening = false;
         setButtonLoading(false);
       }
     }
 
-    // Sahifa yuklanganda faqat token tekshiriladi
-    // Plaid AVTOMATIK OCHILMAYDI — foydalanuvchi tugmani bosishi kerak
     window.addEventListener("load", function () {
       const token = getToken();
+
+      console.log("\n=== PAGE LOADED ===");
+      console.log("Timestamp:", new Date().toISOString());
+      console.log("Token from URL:", new URLSearchParams(window.location.search).get("token"));
+      console.log("Token from session:", sessionStorage.getItem("plaid_token"));
+      console.log("Final token:", token);
+      console.log("===================\n");
 
       if (!token) {
         showError("Verification token is missing. Please open the original link from your email.");
         return;
       }
-
-      console.log("Token ready:", token);
     });
   </script>
 </body>

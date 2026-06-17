@@ -63,36 +63,18 @@ const plaidClient = new PlaidApi(
   })
 );
 
-/**
- * Main page
- *
- * CRM email link example:
- * http://72.60.110.4:3000/?token=bce15a07-f82d-4643-b469-d28f70a51ecb
- */
 app.get("/", (req, res) => {
   res.sendFile(path.join(publicPath, "index.html"));
 });
 
-/**
- * Plaid verify page
- *
- * Example:
- * http://72.60.110.4:3000/verify?token=bce15a07-f82d-4643-b469-d28f70a51ecb
- */
 app.get("/verify", (req, res) => {
   res.sendFile(path.join(publicPath, "verify.html"));
 });
 
-/**
- * Complete page
- */
 app.get("/complete", (req, res) => {
   res.sendFile(path.join(publicPath, "complete.html"));
 });
 
-/**
- * Health check
- */
 app.get("/health", (req, res) => {
   res.json({
     success: true,
@@ -102,35 +84,16 @@ app.get("/health", (req, res) => {
   });
 });
 
-    console.log("PLAID_ENV:", plaidEnv);
-    console.log("Using PLAID_IDV_TEMPLATE_ID:", plaidTemplateId);
-/**
- * Create Plaid Link Token
- *
- * Frontend sends:
- * {
- *   "token": "CRM_GENERATED_TOKEN"
- * }
- *
- * Plaid receives:
- * user.client_user_id = CRM_GENERATED_TOKEN
- *
- * Later:
- * Plaid webhook -> Zoho Deluge
- * Zoho Deluge calls Plaid /identity_verification/get
- * Deluge gets plaidResponse.client_user_id
- * Deluge searches Lead where Plaid_Token = client_user_id
- */
 app.post("/api/idv/create_link_token", async (req, res) => {
   try {
-    console.log("==== CREATE LINK TOKEN REQUEST ====");
+    console.log("\n==== CREATE LINK TOKEN REQUEST ====");
+    console.log("Timestamp:", new Date().toISOString());
     console.log("Request body:", req.body);
 
     const { token } = req.body;
 
     if (!token || String(token).trim() === "") {
       console.log("ERROR: token is missing");
-
       return res.status(400).json({
         success: false,
         message: "token is required",
@@ -138,6 +101,12 @@ app.post("/api/idv/create_link_token", async (req, res) => {
     }
 
     const crmToken = String(token).trim();
+
+    console.log("--- TOKEN DEBUG ---");
+    console.log("CRM Token (raw):", crmToken);
+    console.log("CRM Token length:", crmToken.length);
+    console.log("client_user_id to Plaid:", crmToken);
+    console.log("-------------------");
 
     const response = await plaidClient.linkTokenCreate({
       user: {
@@ -154,6 +123,8 @@ app.post("/api/idv/create_link_token", async (req, res) => {
 
     console.log("Plaid link token created successfully");
     console.log("Plaid request_id:", response.data.request_id);
+    console.log("link_token prefix:", response.data.link_token.substring(0, 30) + "...");
+    console.log("==================================\n");
 
     res.json({
       success: true,
@@ -161,11 +132,12 @@ app.post("/api/idv/create_link_token", async (req, res) => {
       request_id: response.data.request_id,
     });
   } catch (err) {
-    console.log("==== PLAID ERROR ====");
+    console.log("\n==== PLAID ERROR ====");
+    console.log("Timestamp:", new Date().toISOString());
     console.log("Error message:", err.message);
     console.log("Plaid status:", err.response?.status);
     console.log("Plaid response data:", err.response?.data);
-    console.log("=====================");
+    console.log("=====================\n");
 
     res.status(500).json({
       success: false,
