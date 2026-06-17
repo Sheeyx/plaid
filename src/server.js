@@ -91,17 +91,14 @@ app.post("/api/idv/create_link_token", async (req, res) => {
 
     const crmToken = String(token).trim();
 
-    // Har safar yangi unique ID — eski failed session qaytarilmaydi
-    const clientUserId = crmToken + "_" + Date.now();
-
     console.log("--- TOKEN DEBUG ---");
     console.log("CRM Token:", crmToken);
-    console.log("client_user_id to Plaid:", clientUserId);
+    console.log("client_user_id to Plaid:", crmToken);
     console.log("-------------------");
 
     const response = await plaidClient.linkTokenCreate({
       user: {
-        client_user_id: clientUserId,
+        client_user_id: crmToken,
       },
       client_name: "United Transports",
       products: ["identity_verification"],
