@@ -1,457 +1,467 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script>
+  const CREATE_LINK_TOKEN_API =
+    "/api/idv/create_link_token";
 
-  <title>United Transports — Verify Identity</title>
+  const COMPLETE_IDV_API =
+    "/api/idv/complete";
 
-  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  const COMPLETE_ROUTE =
+    "/complete";
 
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+  let isOpening = false;
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f0f2f5;
-      min-height: 100vh;
-    }
+  function getToken() {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
 
-    .topnav {
-      background: #fff;
-      border-bottom: 1px solid #e8e8e8;
-      padding: 0 32px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+    const tokenFromUrl =
+      params.get("token");
 
-    .logo {
-      font-size: 18px;
-      font-weight: 700;
-      color: #000;
-    }
+    if (
+      tokenFromUrl &&
+      tokenFromUrl.trim() !== ""
+    ) {
+      const newToken =
+        tokenFromUrl.trim();
 
-    .logo span {
-      color: #2563eb;
-    }
+      const existingToken =
+        sessionStorage.getItem(
+          "plaid_token"
+        );
 
-    .progress-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .progress-step {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      color: #aaa;
-    }
-
-    .progress-step.active {
-      color: #000;
-      font-weight: 500;
-    }
-
-    .progress-step.done {
-      color: #16a34a;
-    }
-
-    .progress-num {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: #e8e8e8;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-      color: #888;
-    }
-
-    .progress-step.active .progress-num {
-      background: #000;
-      color: #fff;
-    }
-
-    .progress-step.done .progress-num {
-      background: #16a34a;
-      color: #fff;
-    }
-
-    .progress-line {
-      width: 40px;
-      height: 1px;
-      background: #e8e8e8;
-    }
-
-    .progress-line.done {
-      background: #16a34a;
-    }
-
-    .page {
-      min-height: calc(100vh - 60px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 32px;
-    }
-
-    .card {
-      width: 100%;
-      max-width: 460px;
-      background: #fff;
-      border-radius: 16px;
-      border: 1px solid #e8e8e8;
-      padding: 40px 32px;
-      text-align: center;
-    }
-
-    .icon {
-      width: 72px;
-      height: 72px;
-      background: #000;
-      color: #fff;
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 24px;
-      font-size: 32px;
-    }
-
-    h1 {
-      font-size: 24px;
-      font-weight: 700;
-      color: #000;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      font-size: 14px;
-      color: #666;
-      line-height: 1.7;
-      margin-bottom: 28px;
-    }
-
-    .features {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 28px;
-      text-align: left;
-    }
-
-    .feature {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 14px;
-      color: #333;
-    }
-
-    .feature-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: #f0f2f5;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      flex-shrink: 0;
-    }
-
-    button {
-      width: 100%;
-      background: #000;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 16px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-
-    button:hover { opacity: 0.85; }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .plaid-badge {
-      margin-top: 14px;
-      font-size: 12px;
-      color: #aaa;
-    }
-
-    .error {
-      display: none;
-      margin-top: 16px;
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #991b1b;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      text-align: left;
-      word-break: break-word;
-    }
-
-    @media (max-width: 768px) {
-      .topnav { padding: 0 16px; }
-      .progress-step span { display: none; }
-      .page { padding: 16px; }
-      .card { padding: 32px 24px; }
-    }
-  </style>
-</head>
-
-<body>
-  <nav class="topnav">
-    <div class="logo">United <span>Transports</span></div>
-
-    <div class="progress-wrap">
-      <div class="progress-step done">
-        <div class="progress-num">✓</div>
-        <span>Application</span>
-      </div>
-      <div class="progress-line done"></div>
-      <div class="progress-step active">
-        <div class="progress-num">2</div>
-        <span>Verify Identity</span>
-      </div>
-      <div class="progress-line"></div>
-      <div class="progress-step">
-        <div class="progress-num">3</div>
-        <span>Complete</span>
-      </div>
-    </div>
-  </nav>
-
-  <main class="page">
-    <div class="card">
-      <div class="icon">🔒</div>
-
-      <h1>Verify Your Identity</h1>
-
-      <div class="subtitle">
-        Your application was submitted successfully.<br />
-        One last step — verify your identity to complete the process.
-      </div>
-
-      <div class="features">
-        <div class="feature">
-          <div class="feature-icon">📄</div>
-          <span>Government-issued ID or Passport</span>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">🤳</div>
-          <span>Quick selfie for face match</span>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">⏱️</div>
-          <span>Takes less than 2 minutes</span>
-        </div>
-      </div>
-
-      <button id="verify-btn" onclick="startIDV()">
-        Start Identity Verification →
-      </button>
-
-      <div class="plaid-badge">
-        🔒 Powered by <strong style="color:#000;">Plaid</strong>
-      </div>
-
-      <div class="error" id="error-box"></div>
-    </div>
-  </main>
-
-  <script>
-    const CREATE_LINK_TOKEN_API = "/api/idv/create_link_token";
-    const COMPLETE_ROUTE = "/complete";
-
-    let isOpening = false;
-
-    function getToken() {
-      const params = new URLSearchParams(window.location.search);
-      const tokenFromUrl = params.get("token");
-
-      if (tokenFromUrl && tokenFromUrl.trim() !== "") {
-        const newToken = tokenFromUrl.trim();
-        const existingToken = sessionStorage.getItem("plaid_token");
-
-        if (existingToken !== newToken) {
-          sessionStorage.clear();
-        }
-
-        sessionStorage.setItem("plaid_token", newToken);
-        return newToken;
+      if (
+        existingToken !== newToken
+      ) {
+        sessionStorage.clear();
       }
 
-      return sessionStorage.getItem("plaid_token") || null;
+      sessionStorage.setItem(
+        "plaid_token",
+        newToken
+      );
+
+      return newToken;
     }
 
-    function showError(message) {
-      const errorBox = document.getElementById("error-box");
-      errorBox.textContent = message;
-      errorBox.style.display = "block";
-    }
+    return (
+      sessionStorage.getItem(
+        "plaid_token"
+      ) || null
+    );
+  }
 
-    function hideError() {
-      const errorBox = document.getElementById("error-box");
-      errorBox.textContent = "";
-      errorBox.style.display = "none";
-    }
+  function showError(message) {
+    const errorBox =
+      document.getElementById(
+        "error-box"
+      );
 
-    function setButtonLoading(isLoading) {
-      const btn = document.getElementById("verify-btn");
-      btn.disabled = isLoading;
-      btn.textContent = isLoading
+    errorBox.textContent =
+      message;
+
+    errorBox.style.display =
+      "block";
+  }
+
+  function hideError() {
+    const errorBox =
+      document.getElementById(
+        "error-box"
+      );
+
+    errorBox.textContent = "";
+    errorBox.style.display =
+      "none";
+  }
+
+  function setButtonLoading(
+    isLoading
+  ) {
+    const button =
+      document.getElementById(
+        "verify-btn"
+      );
+
+    button.disabled = isLoading;
+
+    button.textContent =
+      isLoading
         ? "Opening Plaid..."
         : "Start Identity Verification →";
+  }
+
+  function extractErrorMessage(
+    data
+  ) {
+    if (!data) {
+      return "Request failed";
     }
 
-    function extractErrorMessage(data) {
-      if (!data) return "Failed to create Plaid link token";
-      if (data.error && data.error.error_message) return data.error.error_message;
-      if (data.error && data.error.display_message) return data.error.display_message;
-      if (data.error && typeof data.error === "string") return data.error;
-      if (data.message) return data.message;
-      return "Failed to create Plaid link token";
+    if (
+      data.error &&
+      data.error.error_message
+    ) {
+      return data.error.error_message;
     }
 
-    async function startIDV() {
-      if (isOpening) return;
+    if (
+      data.error &&
+      data.error.display_message
+    ) {
+      return data.error
+        .display_message;
+    }
 
-      const token = getToken();
+    if (
+      data.error &&
+      typeof data.error ===
+        "string"
+    ) {
+      return data.error;
+    }
 
-      console.log("\n=== START IDV ===");
-      console.log("Timestamp:", new Date().toISOString());
-      console.log("Token:", token);
-      console.log("=================\n");
+    if (data.message) {
+      return data.message;
+    }
 
-      if (!token) {
-        showError("Verification token is missing. Please open the original link from your email.");
-        return;
+    return "Request failed";
+  }
+
+  async function markCompleted(
+    token
+  ) {
+    console.log(
+      "Updating CRM stage to Completed..."
+    );
+
+    const response = await fetch(
+      COMPLETE_IDV_API,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          token,
+        }),
       }
+    );
 
-      if (typeof Plaid === "undefined") {
-        showError("Plaid SDK failed to load. Please refresh the page.");
-        return;
-      }
+    let data = null;
 
-      isOpening = true;
-      hideError();
-      setButtonLoading(true);
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw new Error(
+        "CRM server returned an invalid response"
+      );
+    }
+
+    console.log(
+      "CRM completion response:",
+      data
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        extractErrorMessage(data)
+      );
+    }
+
+    return data;
+  }
+
+  async function startIDV() {
+    if (isOpening) {
+      return;
+    }
+
+    const token = getToken();
+
+    console.log(
+      "\n=== START IDV ==="
+    );
+    console.log(
+      "Timestamp:",
+      new Date().toISOString()
+    );
+    console.log(
+      "Token exists:",
+      Boolean(token)
+    );
+    console.log(
+      "=================\n"
+    );
+
+    if (!token) {
+      showError(
+        "Verification token is missing. Please open the original link from your email."
+      );
+
+      return;
+    }
+
+    if (
+      typeof Plaid ===
+      "undefined"
+    ) {
+      showError(
+        "Plaid SDK failed to load. Please refresh the page."
+      );
+
+      return;
+    }
+
+    isOpening = true;
+    hideError();
+    setButtonLoading(true);
+
+    try {
+      const response = await fetch(
+        CREATE_LINK_TOKEN_API,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            token,
+          }),
+        }
+      );
+
+      let data = null;
 
       try {
-        const response = await fetch(CREATE_LINK_TOKEN_API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: token }),
-        });
+        data =
+          await response.json();
+      } catch (error) {
+        throw new Error(
+          "Server returned an invalid response"
+        );
+      }
 
-        let data = null;
+      console.log(
+        "\n=== LINK TOKEN RESPONSE ==="
+      );
+      console.log(
+        "Status:",
+        response.status
+      );
+      console.log(
+        "Data:",
+        data
+      );
+      console.log(
+        "===========================\n"
+      );
 
-        try {
-          data = await response.json();
-        } catch (jsonError) {
-          throw new Error("Server returned invalid response.");
-        }
+      if (!response.ok) {
+        throw new Error(
+          extractErrorMessage(data)
+        );
+      }
 
-        console.log("\n=== LINK TOKEN RESPONSE ===");
-        console.log("Status:", response.status);
-        console.log("Data:", data);
-        console.log("===========================\n");
+      if (!data.link_token) {
+        throw new Error(
+          "Plaid link_token was not returned"
+        );
+      }
 
-        if (!response.ok) {
-          throw new Error(extractErrorMessage(data));
-        }
-
-        if (!data.link_token) {
-          throw new Error("Plaid link_token not found in backend response.");
-        }
-
-        const handler = Plaid.create({
-          token: data.link_token,
+      /*
+       * Link token yaratilganda backend:
+       * Plaid_Stage = Plaid Verification
+       */
+      const handler =
+        Plaid.create({
+          token:
+            data.link_token,
 
           onLoad: function () {
-            console.log("\n=== PLAID LOADED ===\n");
+            console.log(
+              "\n=== PLAID LOADED ===\n"
+            );
           },
 
-          onSuccess: function (public_token, metadata) {
-            console.log("\n=== PLAID ON_SUCCESS ===");
-            console.log("Timestamp:", new Date().toISOString());
-            console.log("public_token:", public_token);
-            console.log("link_session_id:", metadata?.link_session_id);
-            console.log("status:", metadata?.status);
-            console.log("Full metadata:", JSON.stringify(metadata, null, 2));
-            console.log("========================\n");
+          onSuccess:
+            async function (
+              publicToken,
+              metadata
+            ) {
+              console.log(
+                "\n=== PLAID ON_SUCCESS ==="
+              );
+              console.log(
+                "Timestamp:",
+                new Date().toISOString()
+              );
+              console.log(
+                "link_session_id:",
+                metadata?.link_session_id
+              );
+              console.log(
+                "status:",
+                metadata?.status
+              );
+              console.log(
+                "Full metadata:",
+                JSON.stringify(
+                  metadata,
+                  null,
+                  2
+                )
+              );
+              console.log(
+                "========================\n"
+              );
 
-            sessionStorage.clear();
-            window.location.href = COMPLETE_ROUTE;
-          },
+              try {
+                /*
+                 * Plaid muvaffaqiyatli tugaganda:
+                 * Plaid_Stage = Completed
+                 * Plaid_Token_Status = Used
+                 * Plaid_Token_Used_Time = now
+                 */
+                await markCompleted(
+                  token
+                );
 
-          onExit: function (err, metadata) {
-            console.log("\n=== PLAID ON_EXIT ===");
-            console.log("Timestamp:", new Date().toISOString());
-            console.log("Error:", err);
-            console.log("Metadata:", JSON.stringify(metadata, null, 2));
-            console.log("=====================\n");
+                sessionStorage.clear();
 
-            if (err) {
-              showError("Verification was cancelled or failed. Please try again.");
+                window.location.href =
+                  COMPLETE_ROUTE;
+              } catch (error) {
+                console.error(
+                  "Failed to update CRM completion:",
+                  error
+                );
+
+                showError(
+                  error.message ||
+                    "Verification completed, but CRM could not be updated."
+                );
+
+                isOpening = false;
+                setButtonLoading(
+                  false
+                );
+              }
+            },
+
+          onExit: function (
+            error,
+            metadata
+          ) {
+            console.log(
+              "\n=== PLAID ON_EXIT ==="
+            );
+            console.log(
+              "Timestamp:",
+              new Date().toISOString()
+            );
+            console.log(
+              "Error:",
+              error
+            );
+            console.log(
+              "Metadata:",
+              JSON.stringify(
+                metadata,
+                null,
+                2
+              )
+            );
+            console.log(
+              "=====================\n"
+            );
+
+            if (error) {
+              showError(
+                "Verification was cancelled or failed. Please try again."
+              );
             }
 
             isOpening = false;
             setButtonLoading(false);
           },
 
-          onEvent: function (eventName, metadata) {
-            console.log("\n=== PLAID EVENT ===");
-            console.log("Event:", eventName);
-            console.log("view_name:", metadata?.view_name);
-            console.log("exit_status:", metadata?.exit_status);
-            console.log("link_session_id:", metadata?.link_session_id);
-            console.log("Full metadata:", JSON.stringify(metadata, null, 2));
-            console.log("===================\n");
+          onEvent: function (
+            eventName,
+            metadata
+          ) {
+            console.log(
+              "\n=== PLAID EVENT ==="
+            );
+            console.log(
+              "Event:",
+              eventName
+            );
+            console.log(
+              "view_name:",
+              metadata?.view_name
+            );
+            console.log(
+              "exit_status:",
+              metadata?.exit_status
+            );
+            console.log(
+              "link_session_id:",
+              metadata?.link_session_id
+            );
+            console.log(
+              "===================\n"
+            );
           },
         });
 
-        handler.open();
-      } catch (error) {
-        console.error("\n=== START IDV ERROR ===");
-        console.error("Error:", error);
-        console.error("=======================\n");
-        showError(error.message || "Could not start Plaid. Please try again.");
-        isOpening = false;
-        setButtonLoading(false);
-      }
-    }
+      handler.open();
+    } catch (error) {
+      console.error(
+        "\n=== START IDV ERROR ==="
+      );
+      console.error(
+        "Error:",
+        error
+      );
+      console.error(
+        "=======================\n"
+      );
 
-    window.addEventListener("load", function () {
+      showError(
+        error.message ||
+          "Could not start Plaid. Please try again."
+      );
+
+      isOpening = false;
+      setButtonLoading(false);
+    }
+  }
+
+  window.addEventListener(
+    "load",
+    function () {
       const token = getToken();
 
-      console.log("\n=== PAGE LOADED ===");
-      console.log("Timestamp:", new Date().toISOString());
-      console.log("Token from URL:", new URLSearchParams(window.location.search).get("token"));
-      console.log("Token from session:", sessionStorage.getItem("plaid_token"));
-      console.log("Final token:", token);
-      console.log("===================\n");
+      console.log(
+        "\n=== VERIFY PAGE LOADED ==="
+      );
+      console.log(
+        "Token exists:",
+        Boolean(token)
+      );
+      console.log(
+        "==========================\n"
+      );
 
       if (!token) {
-        showError("Verification token is missing. Please open the original link from your email.");
-        return;
+        showError(
+          "Verification token is missing. Please open the original link from your email."
+        );
       }
-    });
-  </script>
-</body>
-</html>
+    }
+  );
+</script>
