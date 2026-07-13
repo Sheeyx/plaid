@@ -151,11 +151,37 @@ const TOKEN_STATUS_REVOKED = "Revoked";
 
 /* =========================================================
    PLAID STAGE VALUES
+   ---------------------------------------------------------
+   MUHIM: bu qiymatlar Zoho CRM'dagi Plaid_Stage picklist
+   variantlari bilan HARFMA-HARF (case-sensitive) bir xil
+   bo'lishi SHART. Zoho'da picklistda mos qiymat topilmasa,
+   yangilash so'rovi INVALID_DATA xatosi bilan qaytadi.
+
+   Sizning Zoho CRM'ingizdagi picklist variantlari (skrinshot
+   asosida):
+     Zoho form
+     Plaid verification
+     Completed
+
+   Agar Zoho'da bu qiymatlarni kelajakda o'zgartirsangiz,
+   quyidagi env o'zgaruvchilar orqali moslashtiring:
+     ZOHO_STAGE_ZOHO_FORM
+     ZOHO_STAGE_VERIFICATION
+     ZOHO_STAGE_COMPLETED
 ========================================================= */
 
-const PLAID_STAGE_ZOHO_FORM = "Zoho Form";
-const PLAID_STAGE_VERIFICATION = "Plaid Verification";
-const PLAID_STAGE_COMPLETED = "Completed";
+const PLAID_STAGE_ZOHO_FORM = (
+  process.env.ZOHO_STAGE_ZOHO_FORM || "Zoho form"
+).trim();
+
+const PLAID_STAGE_VERIFICATION = (
+  process.env.ZOHO_STAGE_VERIFICATION ||
+  "Plaid verification"
+).trim();
+
+const PLAID_STAGE_COMPLETED = (
+  process.env.ZOHO_STAGE_COMPLETED || "Completed"
+).trim();
 
 /* =========================================================
    REQUIRED ENV CHECK
@@ -186,82 +212,24 @@ if (!zohoRefreshToken) {
 console.log("========== ENV CHECK ==========");
 console.log("PORT:", PORT);
 console.log("PLAID_ENV:", plaidEnv);
-
-console.log(
-  "PLAID_CLIENT_ID exists:",
-  Boolean(plaidClientId)
-);
-
-console.log(
-  "PLAID_SECRET exists:",
-  Boolean(plaidSecret)
-);
-
-console.log(
-  "PLAID_IDV_TEMPLATE_ID exists:",
-  Boolean(plaidTemplateId)
-);
-
-console.log(
-  "ZOHO_CLIENT_ID exists:",
-  Boolean(zohoClientId)
-);
-
-console.log(
-  "ZOHO_CLIENT_SECRET exists:",
-  Boolean(zohoClientSecret)
-);
-
-console.log(
-  "ZOHO_REFRESH_TOKEN exists:",
-  Boolean(zohoRefreshToken)
-);
-
-console.log(
-  "ZOHO_ACCOUNTS_URL:",
-  zohoAccountsUrl
-);
-
-console.log(
-  "ZOHO_API_URL:",
-  zohoApiUrl
-);
-
-console.log(
-  "ZOHO_LEADS_MODULE:",
-  zohoLeadsModule
-);
-
-console.log(
-  "ZOHO_PLAID_TOKEN_FIELD:",
-  zohoPlaidTokenField
-);
-
-console.log(
-  "ZOHO_LEAD_STATUS_FIELD:",
-  zohoLeadStatusField
-);
-
-console.log(
-  "ZOHO_ALLOWED_LEAD_STATUS:",
-  zohoAllowedLeadStatus
-);
-
-console.log(
-  "ZOHO_TOKEN_STATUS_FIELD:",
-  zohoTokenStatusField
-);
-
-console.log(
-  "ZOHO_TOKEN_USED_FIELD:",
-  zohoTokenUsedField
-);
-
-console.log(
-  "ZOHO_PLAID_STAGE_FIELD:",
-  zohoPlaidStageField
-);
-
+console.log("PLAID_CLIENT_ID exists:", Boolean(plaidClientId));
+console.log("PLAID_SECRET exists:", Boolean(plaidSecret));
+console.log("PLAID_IDV_TEMPLATE_ID exists:", Boolean(plaidTemplateId));
+console.log("ZOHO_CLIENT_ID exists:", Boolean(zohoClientId));
+console.log("ZOHO_CLIENT_SECRET exists:", Boolean(zohoClientSecret));
+console.log("ZOHO_REFRESH_TOKEN exists:", Boolean(zohoRefreshToken));
+console.log("ZOHO_ACCOUNTS_URL:", zohoAccountsUrl);
+console.log("ZOHO_API_URL:", zohoApiUrl);
+console.log("ZOHO_LEADS_MODULE:", zohoLeadsModule);
+console.log("ZOHO_PLAID_TOKEN_FIELD:", zohoPlaidTokenField);
+console.log("ZOHO_LEAD_STATUS_FIELD:", zohoLeadStatusField);
+console.log("ZOHO_ALLOWED_LEAD_STATUS:", zohoAllowedLeadStatus);
+console.log("ZOHO_TOKEN_STATUS_FIELD:", zohoTokenStatusField);
+console.log("ZOHO_TOKEN_USED_FIELD:", zohoTokenUsedField);
+console.log("ZOHO_PLAID_STAGE_FIELD:", zohoPlaidStageField);
+console.log("PLAID_STAGE_ZOHO_FORM:", JSON.stringify(PLAID_STAGE_ZOHO_FORM));
+console.log("PLAID_STAGE_VERIFICATION:", JSON.stringify(PLAID_STAGE_VERIFICATION));
+console.log("PLAID_STAGE_COMPLETED:", JSON.stringify(PLAID_STAGE_COMPLETED));
 console.log("================================");
 
 /* =========================================================
@@ -277,38 +245,13 @@ async function getZohoAccessToken() {
   if (
     cachedZohoAccessToken &&
     currentTime <
-      zohoAccessTokenExpiresAt -
-        5 * 60 * 1000
+      zohoAccessTokenExpiresAt - 5 * 60 * 1000
   ) {
-    console.log(
-      "Using cached Zoho access token"
-    );
-
     return cachedZohoAccessToken;
   }
 
   console.log(
     "\n========== ZOHO ACCESS TOKEN REFRESH =========="
-  );
-
-  console.log(
-    "Accounts URL:",
-    zohoAccountsUrl
-  );
-
-  console.log(
-    "Client ID exists:",
-    Boolean(zohoClientId)
-  );
-
-  console.log(
-    "Client Secret exists:",
-    Boolean(zohoClientSecret)
-  );
-
-  console.log(
-    "Refresh Token exists:",
-    Boolean(zohoRefreshToken)
   );
 
   const response = await axios.post(
@@ -329,16 +272,10 @@ async function getZohoAccessToken() {
     }
   );
 
-  console.log(
-    "Zoho OAuth HTTP status:",
-    response.status
-  );
+  console.log("Zoho OAuth HTTP status:", response.status);
 
   if (!response.data?.access_token) {
-    console.error(
-      "Zoho OAuth response:",
-      response.data
-    );
+    console.error("Zoho OAuth response:", response.data);
 
     throw new Error(
       `Zoho access token was not returned: ${JSON.stringify(
@@ -347,27 +284,20 @@ async function getZohoAccessToken() {
     );
   }
 
-  cachedZohoAccessToken =
-    response.data.access_token;
+  cachedZohoAccessToken = response.data.access_token;
 
   const expiresInSeconds = Number(
     response.data.expires_in || 3600
   );
 
   zohoAccessTokenExpiresAt =
-    currentTime +
-    expiresInSeconds * 1000;
+    currentTime + expiresInSeconds * 1000;
 
   console.log(
-    "Zoho access token refreshed successfully"
-  );
-
-  console.log(
-    "Expires in:",
+    "Zoho access token refreshed successfully, expires in",
     expiresInSeconds,
     "seconds"
   );
-
   console.log(
     "===============================================\n"
   );
@@ -380,9 +310,7 @@ async function getZohoAccessToken() {
 ========================================================= */
 
 function normalizeCrmToken(value) {
-  const token = String(value || "")
-    .trim()
-    .toLowerCase();
+  const token = String(value || "").trim().toLowerCase();
 
   const uuidV4Pattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -401,10 +329,9 @@ function maskToken(value) {
     return "***";
   }
 
-  return `${token.substring(
-    0,
-    8
-  )}...${token.substring(token.length - 4)}`;
+  return `${token.substring(0, 8)}...${token.substring(
+    token.length - 4
+  )}`;
 }
 
 function formatZohoDateTime(date = new Date()) {
@@ -415,19 +342,12 @@ function formatZohoDateTime(date = new Date()) {
    UPDATE LEAD IN ZOHO CRM
 ========================================================= */
 
-async function updateLeadFields(
-  leadId,
-  fields
-) {
-  console.log(
-    "\n========== UPDATE ZOHO LEAD =========="
-  );
-
+async function updateLeadFields(leadId, fields) {
+  console.log("\n========== UPDATE ZOHO LEAD ==========");
   console.log("Lead ID:", leadId);
   console.log("Fields:", fields);
 
-  const accessToken =
-    await getZohoAccessToken();
+  const accessToken = await getZohoAccessToken();
 
   const response = await axios.put(
     `${zohoApiUrl}/crm/v8/${zohoLeadsModule}`,
@@ -441,8 +361,7 @@ async function updateLeadFields(
     },
     {
       headers: {
-        Authorization:
-          `Zoho-oauthtoken ${accessToken}`,
+        Authorization: `Zoho-oauthtoken ${accessToken}`,
         "Content-Type": "application/json",
       },
       timeout: 15000,
@@ -452,20 +371,13 @@ async function updateLeadFields(
     }
   );
 
-  console.log(
-    "Zoho update HTTP status:",
-    response.status
-  );
-
+  console.log("Zoho update HTTP status:", response.status);
   console.log(
     "Zoho update response:",
     JSON.stringify(response.data, null, 2)
   );
 
-  if (
-    response.status < 200 ||
-    response.status >= 300
-  ) {
+  if (response.status < 200 || response.status >= 300) {
     throw new Error(
       `Zoho Lead update failed: ${JSON.stringify(
         response.data
@@ -473,29 +385,47 @@ async function updateLeadFields(
     );
   }
 
-  const result =
-    response.data?.data?.[0];
+  const result = response.data?.data?.[0];
 
-  if (
-    result &&
-    result.status !== "success"
-  ) {
+  if (result && result.status !== "success") {
     throw new Error(
-      `Zoho Lead update rejected: ${JSON.stringify(
-        result
-      )}`
+      `Zoho Lead update rejected: ${JSON.stringify(result)}`
     );
   }
 
-  console.log(
-    "Zoho Lead updated successfully"
-  );
-
-  console.log(
-    "======================================\n"
-  );
+  console.log("Zoho Lead updated successfully");
+  console.log("======================================\n");
 
   return response.data;
+}
+
+/**
+ * Ikkilamchi (bookkeeping) CRM yangilanishlari uchun.
+ * Masalan Plaid_Stage'ni "Zoho form" yoki "Plaid verification"
+ * ga qo'yish — bu asosiy oqim (token tekshirish, link token
+ * yaratish) uchun HAYOTIY EMAS. Shu sababli xato bo'lsa,
+ * faqat log qilinadi va foydalanuvchi jarayoni davom etadi.
+ *
+ * Agar bu chaqiruvlar oddiy updateLeadFields kabi throw qilsa,
+ * butun endpoint 500 bilan qaytadi va foydalanuvchi hech qayerga
+ * o'tolmay qoladi — aynan shu sabab avvalgi versiyada "/verify"ga
+ * o'tish bloklangan edi.
+ */
+async function updateLeadFieldsBestEffort(
+  leadId,
+  fields,
+  context
+) {
+  try {
+    await updateLeadFields(leadId, fields);
+  } catch (error) {
+    console.error(
+      `Best-effort CRM update failed (${context}) for Lead`,
+      leadId,
+      ":",
+      error.message
+    );
+  }
 }
 
 /* =========================================================
@@ -506,25 +436,13 @@ async function validateLeadToken(rawToken) {
   console.log(
     "\n========== CRM TOKEN VALIDATION START =========="
   );
+  console.log("Timestamp:", new Date().toISOString());
+  console.log("Raw token received:", maskToken(rawToken));
 
-  console.log(
-    "Timestamp:",
-    new Date().toISOString()
-  );
-
-  console.log(
-    "Raw token received:",
-    maskToken(rawToken)
-  );
-
-  const crmToken =
-    normalizeCrmToken(rawToken);
+  const crmToken = normalizeCrmToken(rawToken);
 
   if (!crmToken) {
-    console.log(
-      "VALIDATION RESULT: INVALID TOKEN FORMAT"
-    );
-
+    console.log("VALIDATION RESULT: INVALID TOKEN FORMAT");
     console.log(
       "================================================\n"
     );
@@ -532,16 +450,13 @@ async function validateLeadToken(rawToken) {
     return {
       valid: false,
       statusCode: 400,
-      message:
-        "Invalid verification token format",
+      message: "Invalid verification token format",
     };
   }
 
-  const accessToken =
-    await getZohoAccessToken();
+  const accessToken = await getZohoAccessToken();
 
-  const escapedToken =
-    crmToken.replace(/'/g, "\\'");
+  const escapedToken = crmToken.replace(/'/g, "\\'");
 
   const selectQuery = `
     SELECT
@@ -561,15 +476,8 @@ async function validateLeadToken(rawToken) {
     .replace(/\s+/g, " ")
     .trim();
 
-  console.log(
-    "Zoho COQL URL:",
-    `${zohoApiUrl}/crm/v8/coql`
-  );
-
-  console.log(
-    "Zoho COQL query:",
-    selectQuery
-  );
+  console.log("Zoho COQL URL:", `${zohoApiUrl}/crm/v8/coql`);
+  console.log("Zoho COQL query:", selectQuery);
 
   const response = await axios.post(
     `${zohoApiUrl}/crm/v8/coql`,
@@ -578,8 +486,7 @@ async function validateLeadToken(rawToken) {
     },
     {
       headers: {
-        Authorization:
-          `Zoho-oauthtoken ${accessToken}`,
+        Authorization: `Zoho-oauthtoken ${accessToken}`,
         "Content-Type": "application/json",
       },
       timeout: 15000,
@@ -589,56 +496,36 @@ async function validateLeadToken(rawToken) {
     }
   );
 
-  console.log(
-    "Zoho COQL HTTP status:",
-    response.status
-  );
-
+  console.log("Zoho COQL HTTP status:", response.status);
   console.log(
     "Zoho COQL response:",
     JSON.stringify(response.data, null, 2)
   );
 
-  if (
-    response.status < 200 ||
-    response.status >= 300
-  ) {
+  if (response.status < 200 || response.status >= 300) {
     throw new Error(
-      `Zoho COQL failed: ${JSON.stringify(
-        response.data
-      )}`
+      `Zoho COQL failed: ${JSON.stringify(response.data)}`
     );
   }
 
-  const leads = Array.isArray(
-    response.data?.data
-  )
+  const leads = Array.isArray(response.data?.data)
     ? response.data.data
     : [];
 
-  console.log(
-    "Matching Lead count:",
-    leads.length
-  );
+  console.log("Matching Lead count:", leads.length);
 
   if (leads.length === 0) {
-    console.log(
-      "VALIDATION RESULT: TOKEN NOT FOUND"
-    );
+    console.log("VALIDATION RESULT: TOKEN NOT FOUND");
 
     return {
       valid: false,
       statusCode: 403,
-      message:
-        "Verification token was not found",
+      message: "Verification token was not found",
     };
   }
 
   if (leads.length > 1) {
-    console.log(
-      "VALIDATION RESULT: DUPLICATE TOKEN"
-    );
-
+    console.log("VALIDATION RESULT: DUPLICATE TOKEN");
     console.log(
       "Duplicate Lead IDs:",
       leads.map((lead) => lead.id)
@@ -647,72 +534,41 @@ async function validateLeadToken(rawToken) {
     return {
       valid: false,
       statusCode: 409,
-      message:
-        "Duplicate verification token found",
+      message: "Duplicate verification token found",
     };
   }
 
   const lead = leads[0];
 
-  console.log(
-    "Matching Lead found"
-  );
-
-  console.log(
-    "Lead ID:",
-    lead.id
-  );
-
+  console.log("Matching Lead found");
+  console.log("Lead ID:", lead.id);
   console.log(
     "Lead name:",
-    `${lead.First_Name || ""} ${
-      lead.Last_Name || ""
-    }`.trim()
+    `${lead.First_Name || ""} ${lead.Last_Name || ""}`.trim()
   );
-
-  console.log(
-    "Lead email:",
-    lead.Email || ""
-  );
-
+  console.log("Lead email:", lead.Email || "");
   console.log(
     "CRM saved token:",
-    maskToken(
-      lead[zohoPlaidTokenField]
-    )
+    maskToken(lead[zohoPlaidTokenField])
   );
-
-  console.log(
-    "CRM Lead status:",
-    lead[zohoLeadStatusField]
-  );
-
+  console.log("CRM Lead status:", lead[zohoLeadStatusField]);
   console.log(
     "CRM Plaid Token Status:",
     lead[zohoTokenStatusField]
   );
+  console.log("CRM Plaid Stage:", lead[zohoPlaidStageField]);
 
-  console.log(
-    "CRM Plaid Stage:",
-    lead[zohoPlaidStageField]
-  );
-
-  const savedToken = String(
-    lead[zohoPlaidTokenField] || ""
-  )
+  const savedToken = String(lead[zohoPlaidTokenField] || "")
     .trim()
     .toLowerCase();
 
   if (savedToken !== crmToken) {
-    console.log(
-      "VALIDATION RESULT: TOKEN DOES NOT MATCH"
-    );
+    console.log("VALIDATION RESULT: TOKEN DOES NOT MATCH");
 
     return {
       valid: false,
       statusCode: 403,
-      message:
-        "Verification token is invalid",
+      message: "Verification token is invalid",
     };
   }
 
@@ -720,29 +576,15 @@ async function validateLeadToken(rawToken) {
     lead[zohoLeadStatusField] || ""
   ).trim();
 
-  if (
-    currentLeadStatus !==
-    zohoAllowedLeadStatus
-  ) {
-    console.log(
-      "VALIDATION RESULT: LEAD STATUS NOT ALLOWED"
-    );
-
-    console.log(
-      "Current status:",
-      currentLeadStatus
-    );
-
-    console.log(
-      "Required status:",
-      zohoAllowedLeadStatus
-    );
+  if (currentLeadStatus !== zohoAllowedLeadStatus) {
+    console.log("VALIDATION RESULT: LEAD STATUS NOT ALLOWED");
+    console.log("Current status:", currentLeadStatus);
+    console.log("Required status:", zohoAllowedLeadStatus);
 
     return {
       valid: false,
       statusCode: 403,
-      message:
-        "This verification link is no longer active",
+      message: "This verification link is no longer active",
     };
   }
 
@@ -750,52 +592,22 @@ async function validateLeadToken(rawToken) {
     lead[zohoTokenStatusField] || ""
   ).trim();
 
-  console.log(
-    "Token Status:",
-    tokenStatus || "(empty)"
-  );
+  console.log("Token Status:", tokenStatus || "(empty)");
 
-  /*
-   * Faqat Active token ishlaydi.
-   * Vaqt tekshirilmaydi.
-   */
-  if (
-    tokenStatus !== TOKEN_STATUS_ACTIVE
-  ) {
-    let message =
-      "This verification link is not active";
+  if (tokenStatus !== TOKEN_STATUS_ACTIVE) {
+    let message = "This verification link is not active";
 
-    if (
-      tokenStatus === TOKEN_STATUS_USED
-    ) {
-      message =
-        "This verification link has already been used";
-    } else if (
-      tokenStatus === TOKEN_STATUS_EXPIRED
-    ) {
-      message =
-        "This verification link has expired";
-    } else if (
-      tokenStatus === TOKEN_STATUS_REVOKED
-    ) {
-      message =
-        "This verification link has been revoked";
+    if (tokenStatus === TOKEN_STATUS_USED) {
+      message = "This verification link has already been used";
+    } else if (tokenStatus === TOKEN_STATUS_EXPIRED) {
+      message = "This verification link has expired";
+    } else if (tokenStatus === TOKEN_STATUS_REVOKED) {
+      message = "This verification link has been revoked";
     }
 
-    console.log(
-      "VALIDATION RESULT: TOKEN IS NOT ACTIVE"
-    );
-
-    console.log(
-      "Current token status:",
-      tokenStatus || "(empty)"
-    );
-
-    console.log(
-      "Validation message:",
-      message
-    );
-
+    console.log("VALIDATION RESULT: TOKEN IS NOT ACTIVE");
+    console.log("Current token status:", tokenStatus || "(empty)");
+    console.log("Validation message:", message);
     console.log(
       "================================================\n"
     );
@@ -810,12 +622,7 @@ async function validateLeadToken(rawToken) {
   console.log(
     "VALIDATION RESULT: TOKEN EXISTS AND STATUS IS ACTIVE"
   );
-
-  console.log(
-    "Lead ID:",
-    lead.id
-  );
-
+  console.log("Lead ID:", lead.id);
   console.log(
     "================================================\n"
   );
@@ -832,21 +639,15 @@ async function validateLeadToken(rawToken) {
 ========================================================= */
 
 app.get("/", (req, res) => {
-  res.sendFile(
-    path.join(publicPath, "index.html")
-  );
+  res.sendFile(path.join(publicPath, "index.html"));
 });
 
 app.get("/verify", (req, res) => {
-  res.sendFile(
-    path.join(publicPath, "verify.html")
-  );
+  res.sendFile(path.join(publicPath, "verify.html"));
 });
 
 app.get("/complete", (req, res) => {
-  res.sendFile(
-    path.join(publicPath, "complete.html")
-  );
+  res.sendFile(path.join(publicPath, "complete.html"));
 });
 
 /* =========================================================
@@ -859,12 +660,9 @@ app.get("/health", (req, res) => {
     message: "Server is running",
     plaid_env: plaidEnv,
     zoho_connected: Boolean(
-      zohoClientId &&
-        zohoClientSecret &&
-        zohoRefreshToken
+      zohoClientId && zohoClientSecret && zohoRefreshToken
     ),
-    timestamp:
-      new Date().toISOString(),
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -872,553 +670,354 @@ app.get("/health", (req, res) => {
    VALIDATE TOKEN / FIRST PAGE OPEN
 ========================================================= */
 
-app.post(
-  "/api/token/validate",
-  async (req, res) => {
-    try {
-      console.log(
-        "\n========== TOKEN VALIDATE REQUEST =========="
-      );
+app.post("/api/token/validate", async (req, res) => {
+  try {
+    console.log(
+      "\n========== TOKEN VALIDATE REQUEST =========="
+    );
+    console.log("Timestamp:", new Date().toISOString());
 
-      console.log(
-        "Timestamp:",
-        new Date().toISOString()
-      );
+    const { token } = req.body;
 
-      const { token } = req.body;
-
-      if (
-        !token ||
-        String(token).trim() === ""
-      ) {
-        return res.status(400).json({
-          success: false,
-          valid: false,
-          message: "token is required",
-        });
-      }
-
-      const validation =
-        await validateLeadToken(token);
-
-      if (!validation.valid) {
-        return res
-          .status(
-            validation.statusCode || 403
-          )
-          .json({
-            success: false,
-            valid: false,
-            message:
-              validation.message,
-          });
-      }
-
-      const { lead } = validation;
-
-      const currentPlaidStage =
-        String(
-          lead[zohoPlaidStageField] || ""
-        ).trim();
-
-      /*
-       * Birinchi ochilganda:
-       * Plaid_Stage = Zoho Form
-       *
-       * Agar stage oldin yozilgan bo‘lsa,
-       * orqaga Zoho Form qilmaydi.
-       */
-      if (!currentPlaidStage) {
-        console.log(
-          "First opening detected"
-        );
-
-        console.log(
-          "Setting Plaid Stage:",
-          PLAID_STAGE_ZOHO_FORM
-        );
-
-        await updateLeadFields(
-          lead.id,
-          {
-            [zohoPlaidStageField]:
-              PLAID_STAGE_ZOHO_FORM,
-          }
-        );
-      } else {
-        console.log(
-          "Plaid Stage already exists:",
-          currentPlaidStage
-        );
-      }
-
-      console.log(
-        "============================================\n"
-      );
-
-      return res.json({
-        success: true,
-        valid: true,
-        message:
-          "Verification token is valid",
-        stage:
-          currentPlaidStage ||
-          PLAID_STAGE_ZOHO_FORM,
-      });
-    } catch (error) {
-      console.error(
-        "\n========== TOKEN VALIDATION ERROR =========="
-      );
-
-      console.error(
-        "Message:",
-        error.message
-      );
-
-      console.error(
-        "Status:",
-        error.response?.status
-      );
-
-      console.error(
-        "Zoho response:",
-        error.response?.data
-      );
-
-      console.error(
-        "============================================\n"
-      );
-
-      return res.status(500).json({
+    if (!token || String(token).trim() === "") {
+      return res.status(400).json({
         success: false,
         valid: false,
-        message:
-          "Could not validate verification token",
+        message: "token is required",
       });
     }
+
+    const validation = await validateLeadToken(token);
+
+    if (!validation.valid) {
+      return res
+        .status(validation.statusCode || 403)
+        .json({
+          success: false,
+          valid: false,
+          message: validation.message,
+        });
+    }
+
+    const { lead } = validation;
+
+    const currentPlaidStage = String(
+      lead[zohoPlaidStageField] || ""
+    ).trim();
+
+    /*
+     * Birinchi ochilganda: Plaid_Stage = "Zoho form"
+     * Bu — ikkilamchi bookkeeping, shuning uchun best-effort:
+     * muvaffaqiyatsiz bo'lsa ham /api/token/validate javobi
+     * "valid: true" bo'lib qolaveradi va foydalanuvchi
+     * Zoho formani ko'radi / /verify'ga o'ta oladi.
+     */
+    if (!currentPlaidStage) {
+      console.log("First opening detected");
+      console.log("Setting Plaid Stage:", PLAID_STAGE_ZOHO_FORM);
+
+      await updateLeadFieldsBestEffort(
+        lead.id,
+        { [zohoPlaidStageField]: PLAID_STAGE_ZOHO_FORM },
+        "set stage to Zoho form on first open"
+      );
+    } else {
+      console.log(
+        "Plaid Stage already exists:",
+        currentPlaidStage
+      );
+    }
+
+    console.log(
+      "============================================\n"
+    );
+
+    return res.json({
+      success: true,
+      valid: true,
+      message: "Verification token is valid",
+      stage: currentPlaidStage || PLAID_STAGE_ZOHO_FORM,
+    });
+  } catch (error) {
+    console.error(
+      "\n========== TOKEN VALIDATION ERROR =========="
+    );
+    console.error("Message:", error.message);
+    console.error("Status:", error.response?.status);
+    console.error("Zoho response:", error.response?.data);
+    console.error(
+      "============================================\n"
+    );
+
+    return res.status(500).json({
+      success: false,
+      valid: false,
+      message: "Could not validate verification token",
+    });
   }
-);
+});
 
 /* =========================================================
    CREATE PLAID LINK TOKEN
 ========================================================= */
 
-app.post(
-  "/api/idv/create_link_token",
-  async (req, res) => {
-    try {
-      console.log(
-        "\n========== CREATE LINK TOKEN REQUEST =========="
-      );
+app.post("/api/idv/create_link_token", async (req, res) => {
+  try {
+    console.log(
+      "\n========== CREATE LINK TOKEN REQUEST =========="
+    );
+    console.log("Timestamp:", new Date().toISOString());
 
-      console.log(
-        "Timestamp:",
-        new Date().toISOString()
-      );
+    const { token } = req.body;
 
-      const { token } = req.body;
-
-      if (
-        !token ||
-        String(token).trim() === ""
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "token is required",
-        });
-      }
-
-      console.log(
-        "Received token:",
-        maskToken(token)
-      );
-
-      const validation =
-        await validateLeadToken(token);
-
-      if (!validation.valid) {
-        console.log(
-          "Token validation failed:",
-          validation.message
-        );
-
-        return res
-          .status(
-            validation.statusCode || 403
-          )
-          .json({
-            success: false,
-            message:
-              validation.message,
-          });
-      }
-
-      const { lead } = validation;
-
-      const plaidClientUserId =
-        String(lead.id);
-
-      console.log(
-        "Creating Plaid Link Token"
-      );
-
-      console.log(
-        "client_user_id:",
-        plaidClientUserId
-      );
-
-      const plaidResponse =
-        await plaidClient.linkTokenCreate(
-          {
-            user: {
-              client_user_id:
-                plaidClientUserId,
-            },
-            client_name:
-              "United Transports",
-            products: [
-              "identity_verification",
-            ],
-            identity_verification: {
-              template_id:
-                plaidTemplateId,
-            },
-            country_codes: ["US"],
-            language: "en",
-          }
-        );
-
-      /*
-       * Plaid Link Token muvaffaqiyatli
-       * yaratilgandan keyin:
-       * Plaid_Stage = Plaid Verification
-       */
-      await updateLeadFields(
-        lead.id,
-        {
-          [zohoPlaidStageField]:
-            PLAID_STAGE_VERIFICATION,
-        }
-      );
-
-      console.log(
-        "Plaid Link Token created successfully"
-      );
-
-      console.log(
-        "Plaid Stage:",
-        PLAID_STAGE_VERIFICATION
-      );
-
-      console.log(
-        "Lead ID:",
-        lead.id
-      );
-
-      console.log(
-        "Plaid request ID:",
-        plaidResponse.data.request_id
-      );
-
-      console.log(
-        "================================================\n"
-      );
-
-      return res.json({
-        success: true,
-        link_token:
-          plaidResponse.data.link_token,
-        request_id:
-          plaidResponse.data.request_id,
-      });
-    } catch (error) {
-      console.error(
-        "\n========== CREATE LINK TOKEN ERROR =========="
-      );
-
-      console.error(
-        "Timestamp:",
-        new Date().toISOString()
-      );
-
-      console.error(
-        "Message:",
-        error.message
-      );
-
-      console.error(
-        "Status:",
-        error.response?.status
-      );
-
-      console.error(
-        "External response:",
-        error.response?.data
-      );
-
-      console.error(
-        "=============================================\n"
-      );
-
-      return res.status(500).json({
+    if (!token || String(token).trim() === "") {
+      return res.status(400).json({
         success: false,
-        message:
-          "Failed to validate token or create Plaid link token",
-        error:
-          process.env.NODE_ENV ===
-          "development"
-            ? error.response?.data ||
-              error.message
-            : undefined,
+        message: "token is required",
       });
     }
+
+    console.log("Received token:", maskToken(token));
+
+    const validation = await validateLeadToken(token);
+
+    if (!validation.valid) {
+      console.log(
+        "Token validation failed:",
+        validation.message
+      );
+
+      return res
+        .status(validation.statusCode || 403)
+        .json({
+          success: false,
+          message: validation.message,
+        });
+    }
+
+    const { lead } = validation;
+    const plaidClientUserId = String(lead.id);
+
+    console.log("Creating Plaid Link Token");
+    console.log("client_user_id:", plaidClientUserId);
+
+    const plaidResponse = await plaidClient.linkTokenCreate({
+      user: {
+        client_user_id: plaidClientUserId,
+      },
+      client_name: "United Transports",
+      products: ["identity_verification"],
+      identity_verification: {
+        template_id: plaidTemplateId,
+      },
+      country_codes: ["US"],
+      language: "en",
+    });
+
+    /*
+     * Plaid Link Token muvaffaqiyatli yaratilgandan keyin:
+     * Plaid_Stage = "Plaid verification"
+     *
+     * Best-effort: bu yozuv muvaffaqiyatsiz bo'lsa ham,
+     * link_token allaqachon Plaid tomonidan yaratilgan —
+     * foydalanuvchi baribir Plaid oynasini ochishi kerak.
+     * Avvalgi versiyada bu chaqiruv throw qilib, butun
+     * so'rovni 500 bilan qaytargani uchun foydalanuvchi
+     * Plaidga umuman o'tolmagan edi.
+     */
+    await updateLeadFieldsBestEffort(
+      lead.id,
+      { [zohoPlaidStageField]: PLAID_STAGE_VERIFICATION },
+      "set stage to Plaid verification after link token created"
+    );
+
+    console.log("Plaid Link Token created successfully");
+    console.log("Lead ID:", lead.id);
+    console.log(
+      "Plaid request ID:",
+      plaidResponse.data.request_id
+    );
+    console.log(
+      "================================================\n"
+    );
+
+    return res.json({
+      success: true,
+      link_token: plaidResponse.data.link_token,
+      request_id: plaidResponse.data.request_id,
+    });
+  } catch (error) {
+    console.error(
+      "\n========== CREATE LINK TOKEN ERROR =========="
+    );
+    console.error("Timestamp:", new Date().toISOString());
+    console.error("Message:", error.message);
+    console.error("Status:", error.response?.status);
+    console.error(
+      "External response:",
+      error.response?.data
+    );
+    console.error(
+      "=============================================\n"
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to validate token or create Plaid link token",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.response?.data || error.message
+          : undefined,
+    });
   }
-);
+});
 
 /* =========================================================
    COMPLETE PLAID VERIFICATION
 ========================================================= */
 
-app.post(
-  "/api/idv/complete",
-  async (req, res) => {
-    try {
-      console.log(
-        "\n========== IDV COMPLETE REQUEST =========="
-      );
+app.post("/api/idv/complete", async (req, res) => {
+  try {
+    console.log(
+      "\n========== IDV COMPLETE REQUEST =========="
+    );
+    console.log("Timestamp:", new Date().toISOString());
 
-      console.log(
-        "Timestamp:",
-        new Date().toISOString()
-      );
+    const { token } = req.body;
 
-      const { token } = req.body;
-
-      if (
-        !token ||
-        String(token).trim() === ""
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "token is required",
-        });
-      }
-
-      console.log(
-        "Received token:",
-        maskToken(token)
-      );
-
-      /*
-       * Completion oldidan token yana tekshiriladi.
-       * Faqat Active bo‘lsa Completed qilinadi.
-       */
-      const validation =
-        await validateLeadToken(token);
-
-      if (!validation.valid) {
-        return res
-          .status(
-            validation.statusCode || 403
-          )
-          .json({
-            success: false,
-            message:
-              validation.message,
-          });
-      }
-
-      const { lead } = validation;
-
-      const usedTime =
-        formatZohoDateTime();
-
-      console.log(
-        "Updating completed status"
-      );
-
-      console.log(
-        "Lead ID:",
-        lead.id
-      );
-
-      console.log(
-        "Plaid Stage:",
-        PLAID_STAGE_COMPLETED
-      );
-
-      console.log(
-        "Token Status:",
-        TOKEN_STATUS_USED
-      );
-
-      console.log(
-        "Used Time:",
-        usedTime
-      );
-
-      await updateLeadFields(
-        lead.id,
-        {
-          [zohoPlaidStageField]:
-            PLAID_STAGE_COMPLETED,
-          [zohoTokenStatusField]:
-            TOKEN_STATUS_USED,
-          [zohoTokenUsedField]:
-            usedTime,
-        }
-      );
-
-      console.log(
-        "Lead marked Completed successfully"
-      );
-
-      console.log(
-        "==========================================\n"
-      );
-
-      return res.json({
-        success: true,
-        message:
-          "Plaid verification completed",
-        stage:
-          PLAID_STAGE_COMPLETED,
-        token_status:
-          TOKEN_STATUS_USED,
-      });
-    } catch (error) {
-      console.error(
-        "\n========== IDV COMPLETE ERROR =========="
-      );
-
-      console.error(
-        "Timestamp:",
-        new Date().toISOString()
-      );
-
-      console.error(
-        "Message:",
-        error.message
-      );
-
-      console.error(
-        "Status:",
-        error.response?.status
-      );
-
-      console.error(
-        "Response:",
-        error.response?.data
-      );
-
-      console.error(
-        "========================================\n"
-      );
-
-      return res.status(500).json({
+    if (!token || String(token).trim() === "") {
+      return res.status(400).json({
         success: false,
-        message:
-          "Failed to update Plaid completion status",
+        message: "token is required",
       });
     }
+
+    console.log("Received token:", maskToken(token));
+
+    /*
+     * Completion oldidan token yana tekshiriladi.
+     * Faqat Active bo'lsa Completed qilinadi.
+     */
+    const validation = await validateLeadToken(token);
+
+    if (!validation.valid) {
+      return res
+        .status(validation.statusCode || 403)
+        .json({
+          success: false,
+          message: validation.message,
+        });
+    }
+
+    const { lead } = validation;
+    const usedTime = formatZohoDateTime();
+
+    console.log("Updating completed status");
+    console.log("Lead ID:", lead.id);
+    console.log("Plaid Stage:", PLAID_STAGE_COMPLETED);
+    console.log("Token Status:", TOKEN_STATUS_USED);
+    console.log("Used Time:", usedTime);
+
+    // Bu — endpointning asosiy maqsadi, shuning uchun
+    // muvaffaqiyatsizlik bo'lsa xato foydalanuvchiga qaytariladi
+    // (verify.js buni catch qilib, xabar ko'rsatadi).
+    await updateLeadFields(lead.id, {
+      [zohoPlaidStageField]: PLAID_STAGE_COMPLETED,
+      [zohoTokenStatusField]: TOKEN_STATUS_USED,
+      [zohoTokenUsedField]: usedTime,
+    });
+
+    console.log("Lead marked Completed successfully");
+    console.log(
+      "==========================================\n"
+    );
+
+    return res.json({
+      success: true,
+      message: "Plaid verification completed",
+      stage: PLAID_STAGE_COMPLETED,
+      token_status: TOKEN_STATUS_USED,
+    });
+  } catch (error) {
+    console.error(
+      "\n========== IDV COMPLETE ERROR =========="
+    );
+    console.error("Timestamp:", new Date().toISOString());
+    console.error("Message:", error.message);
+    console.error("Status:", error.response?.status);
+    console.error("Response:", error.response?.data);
+    console.error(
+      "========================================\n"
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update Plaid completion status",
+    });
   }
-);
+});
 
 /* =========================================================
    GET IDENTITY VERIFICATION RESULT
 ========================================================= */
 
-app.post(
-  "/api/idv/get",
-  async (req, res) => {
-    try {
-      const {
-        identity_verification_id,
-      } = req.body;
+app.post("/api/idv/get", async (req, res) => {
+  try {
+    const { identity_verification_id } = req.body;
 
-      if (
-        !identity_verification_id ||
-        String(
-          identity_verification_id
-        ).trim() === ""
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "identity_verification_id is required",
-        });
-      }
-
-      console.log(
-        "\n========== IDV GET REQUEST =========="
-      );
-
-      console.log(
-        "Identity Verification ID:",
-        identity_verification_id
-      );
-
-      const response =
-        await plaidClient.identityVerificationGet(
-          {
-            identity_verification_id:
-              String(
-                identity_verification_id
-              ).trim(),
-          }
-        );
-
-      console.log(
-        "Plaid IDV status:",
-        response.data?.status
-      );
-
-      console.log(
-        "=====================================\n"
-      );
-
-      return res.json({
-        success: true,
-        data: response.data,
-      });
-    } catch (error) {
-      console.error(
-        "\n========== IDV GET ERROR =========="
-      );
-
-      console.error(
-        "Message:",
-        error.message
-      );
-
-      console.error(
-        "Status:",
-        error.response?.status
-      );
-
-      console.error(
-        "Plaid response:",
-        error.response?.data
-      );
-
-      console.error(
-        "===================================\n"
-      );
-
-      return res.status(500).json({
+    if (
+      !identity_verification_id ||
+      String(identity_verification_id).trim() === ""
+    ) {
+      return res.status(400).json({
         success: false,
-        message:
-          "Failed to get identity verification",
-        error:
-          process.env.NODE_ENV ===
-          "development"
-            ? error.response?.data ||
-              error.message
-            : undefined,
+        message: "identity_verification_id is required",
       });
     }
+
+    console.log("\n========== IDV GET REQUEST ==========");
+    console.log(
+      "Identity Verification ID:",
+      identity_verification_id
+    );
+
+    const response = await plaidClient.identityVerificationGet(
+      {
+        identity_verification_id: String(
+          identity_verification_id
+        ).trim(),
+      }
+    );
+
+    console.log("Plaid IDV status:", response.data?.status);
+    console.log(
+      "=====================================\n"
+    );
+
+    return res.json({
+      success: true,
+      data: response.data,
+    });
+  } catch (error) {
+    console.error("\n========== IDV GET ERROR ==========");
+    console.error("Message:", error.message);
+    console.error("Status:", error.response?.status);
+    console.error("Plaid response:", error.response?.data);
+    console.error(
+      "===================================\n"
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get identity verification",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.response?.data || error.message
+          : undefined,
+    });
   }
-);
+});
 
 /* =========================================================
    404
@@ -1435,27 +1034,19 @@ app.use((req, res) => {
    GLOBAL ERROR HANDLER
 ========================================================= */
 
-app.use(
-  (error, req, res, next) => {
-    console.error(
-      "Unhandled server error:",
-      error
-    );
+app.use((error, req, res, next) => {
+  console.error("Unhandled server error:", error);
 
-    res.status(500).json({
-      success: false,
-      message:
-        "Internal server error",
-    });
-  }
-);
+  res.status(500).json({
+    success: false,
+    message: "Internal server error",
+  });
+});
 
 /* =========================================================
    START SERVER
 ========================================================= */
 
 app.listen(PORT, () => {
-  console.log(
-    `Server running: http://localhost:${PORT}`
-  );
+  console.log(`Server running: http://localhost:${PORT}`);
 });
