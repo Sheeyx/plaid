@@ -114,6 +114,42 @@ const zohoAllowedLeadStatus = (
   "Interested"
 ).trim();
 
+/*
+ * Plaid_Token lifecycle fields (Zoho CRM > Leads):
+ *   Plaid_Token_Status       -> Active | Used | Expired | Revoked
+ *   Plaid_Token_Created_Time -> datetime, used for auto-expiry
+ *   Plaid_Token_Used_Time    -> datetime, set once verification result is obtained
+ */
+
+const zohoTokenStatusField = (
+  process.env.ZOHO_TOKEN_STATUS_FIELD ||
+  "Plaid_Token_Status"
+).trim();
+
+const zohoTokenCreatedField = (
+  process.env.ZOHO_TOKEN_CREATED_FIELD ||
+  "Plaid_Token_Created_Time"
+).trim();
+
+const zohoTokenUsedField = (
+  process.env.ZOHO_TOKEN_USED_FIELD ||
+  "Plaid_Token_Used_Time"
+).trim();
+
+const TOKEN_STATUS_ACTIVE = "Active";
+const TOKEN_STATUS_USED = "Used";
+const TOKEN_STATUS_EXPIRED = "Expired";
+const TOKEN_STATUS_REVOKED = "Revoked";
+
+/*
+ * Token qancha vaqt "Active" hisoblanadi (soatlarda).
+ * Created_Time'dan shu muddat o'tsa, token avtomatik
+ * "Expired" deb qabul qilinadi (CRM'da ham shu holatga yangilanadi).
+ */
+const tokenExpiryHours = Number(
+  process.env.TOKEN_EXPIRY_HOURS || 48
+);
+
 if (!zohoClientId) {
   throw new Error("ZOHO_CLIENT_ID is missing in .env");
 }
@@ -144,6 +180,10 @@ console.log("ZOHO_LEADS_MODULE:", zohoLeadsModule);
 console.log("ZOHO_PLAID_TOKEN_FIELD:", zohoPlaidTokenField);
 console.log("ZOHO_LEAD_STATUS_FIELD:", zohoLeadStatusField);
 console.log("ZOHO_ALLOWED_LEAD_STATUS:", zohoAllowedLeadStatus);
+console.log("ZOHO_TOKEN_STATUS_FIELD:", zohoTokenStatusField);
+console.log("ZOHO_TOKEN_CREATED_FIELD:", zohoTokenCreatedField);
+console.log("ZOHO_TOKEN_USED_FIELD:", zohoTokenUsedField);
+console.log("TOKEN_EXPIRY_HOURS:", tokenExpiryHours);
 console.log("================================");
 
 /* =========================================================
@@ -246,12 +286,63 @@ function maskToken(value) {
 }
 
 /* =========================================================
+   UPDATE LEAD FIELDS IN ZOHO CRM
+========================================================= */
+
+/**
+ * Berilgan Lead ID uchun bir yoki bir nechta fieldni yangilaydi.
+ * Best-effort operatsiya sifatida ishlatiladi — chaqiruvchi kod
+ * xatolikni ushlab, asosiy javobni bloklamasligi kerak.
+ */
+async function updateLeadFields(leadId, fields) {
+  const accessToken = await getZohoAccessToken();
+
+  const response = await axios.put(
+    `${zohoApiUrl}/crm/v8/${zohoLeadsModule}`,
+    {
+      data: [
+        {
+          id: String(leadId),
+          ...fields,
+        },
+      ],
+    },
+    {
+      headers: {
+        Authorization: `Zoho-oauthtoken ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      timeout: 15000,
+      validateStatus(status) {
+        return status >= 200 && status < 500;
+      },
+    }
+  );
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(
+      `Zoho Lead update failed: ${JSON.stringify(response.data)}`
+    );
+  }
+
+  const result = response.data?.data?.[0];
+
+  if (result && result.status !== "success") {
+    throw new Error(
+      `Zoho Lead update rejected: ${JSON.stringify(result)}`
+    );
+  }
+
+  return response.data;
+}
+
+/* =========================================================
    VALIDATE TOKEN IN ZOHO CRM (via Search API)
 ========================================================= */
 
 /**
  * Plaid_Token field orqali Leadni Zoho CRM'dan /search endpoint
- * orqali qidiradi.
+ * orqali qidiradi va Plaid_Token_Status asosida tekshiradi.
  *
  * MUHIM: Bu endpoint ishlashi uchun Zoho CRM'da
  * (Setup > Customization > Modules and Fields > Leads > Plaid_Token)
@@ -299,7 +390,10 @@ async function validateLeadToken(rawToken) {
       Last_Name,
       Email,
       ${zohoPlaidTokenField},
-      ${zohoLeadStatusField}
+      ${zohoLeadStatusField},
+      ${zohoTokenStatusField},
+      ${zohoTokenCreatedField},
+      ${zohoTokenUsedField}
     FROM ${zohoLeadsModule}
     WHERE ${zohoPlaidTokenField} = '${escapedToken}'
     LIMIT 2
@@ -391,6 +485,18 @@ async function validateLeadToken(rawToken) {
     "CRM Lead status:",
     lead[zohoLeadStatusField]
   );
+  console.log(
+    "CRM Plaid token status:",
+    lead[zohoTokenStatusField]
+  );
+  console.log(
+    "CRM Plaid token created time:",
+    lead[zohoTokenCreatedField]
+  );
+  console.log(
+    "CRM Plaid token used time:",
+    lead[zohoTokenUsedField]
+  );
 
   const savedToken = String(
     lead[zohoPlaidTokenField] || ""
@@ -428,9 +534,115 @@ async function validateLeadToken(rawToken) {
     };
   }
 
+  /* -----------------------------------------------------
+     PLAID_TOKEN_STATUS CHECK (Active / Used / Expired / Revoked)
+  ----------------------------------------------------- */
+
+  const tokenStatus = String(
+    lead[zohoTokenStatusField] || ""
+  ).trim();
+
+  if (tokenStatus === TOKEN_STATUS_USED) {
+    console.log("VALIDATION RESULT: TOKEN ALREADY USED");
+    console.log("================================================\n");
+
+    return {
+      valid: false,
+      statusCode: 403,
+      message: "This verification link has already been used",
+    };
+  }
+
+  if (tokenStatus === TOKEN_STATUS_REVOKED) {
+    console.log("VALIDATION RESULT: TOKEN REVOKED");
+    console.log("================================================\n");
+
+    return {
+      valid: false,
+      statusCode: 403,
+      message: "This verification link has been revoked",
+    };
+  }
+
+  if (tokenStatus === TOKEN_STATUS_EXPIRED) {
+    console.log("VALIDATION RESULT: TOKEN ALREADY MARKED EXPIRED");
+    console.log("================================================\n");
+
+    return {
+      valid: false,
+      statusCode: 403,
+      message: "This verification link has expired",
+    };
+  }
+
+  if (tokenStatus !== TOKEN_STATUS_ACTIVE) {
+    console.log("VALIDATION RESULT: UNKNOWN/UNSET TOKEN STATUS");
+    console.log("Token status value:", tokenStatus || "(empty)");
+    console.log("================================================\n");
+
+    return {
+      valid: false,
+      statusCode: 403,
+      message: "This verification link is not active",
+    };
+  }
+
+  /* -----------------------------------------------------
+     AUTO-EXPIRY CHECK (Created_Time + TOKEN_EXPIRY_HOURS)
+  ----------------------------------------------------- */
+
+  const createdRaw = lead[zohoTokenCreatedField];
+
+  if (createdRaw) {
+    const createdTimeMs = new Date(createdRaw).getTime();
+
+    if (!Number.isNaN(createdTimeMs)) {
+      const hoursElapsed =
+        (Date.now() - createdTimeMs) / (1000 * 60 * 60);
+
+      console.log(
+        "Hours elapsed since token creation:",
+        hoursElapsed.toFixed(2)
+      );
+      console.log("Token expiry limit (hours):", tokenExpiryHours);
+
+      if (hoursElapsed > tokenExpiryHours) {
+        console.log("VALIDATION RESULT: TOKEN EXPIRED BY TIME");
+        console.log("================================================\n");
+
+        // Best-effort: CRM'da holatni "Expired" ga yangilaymiz.
+        // Bu asosiy javobni bloklamaydi — xatolik faqat log qilinadi.
+        updateLeadFields(lead.id, {
+          [zohoTokenStatusField]: TOKEN_STATUS_EXPIRED,
+        }).catch((err) => {
+          console.error(
+            "Failed to mark token Expired in CRM:",
+            err.message
+          );
+        });
+
+        return {
+          valid: false,
+          statusCode: 403,
+          message: "This verification link has expired",
+        };
+      }
+    } else {
+      console.log(
+        "WARNING: Could not parse token created time:",
+        createdRaw
+      );
+    }
+  } else {
+    console.log(
+      "WARNING: Token created time is empty — skipping auto-expiry check"
+    );
+  }
+
   console.log("VALIDATION RESULT: TOKEN EXISTS AND IS VALID");
   console.log("Lead ID:", lead.id);
   console.log("Lead status:", currentLeadStatus);
+  console.log("Plaid token status:", tokenStatus);
   console.log("================================================\n");
 
   return {
@@ -530,9 +742,15 @@ app.post("/api/token/validate", async (req, res) => {
 
 /**
  * 1. Browserdan CRM token keladi.
- * 2. Token Zoho CRM ichida tekshiriladi.
- * 3. Lead topilsa va status Interested bo'lsa,
+ * 2. Token Zoho CRM ichida tekshiriladi (status, expiry va h.k.).
+ * 3. Lead topilsa va barcha shartlar bajarilsa,
  *    Plaid Link Token yaratiladi.
+ *
+ * MUHIM: Bu bosqichda Plaid_Token_Status "Used" ga
+ * O'ZGARTIRILMAYDI — chunki foydalanuvchi hali Plaid
+ * verificationni tugatmagan bo'lishi mumkin (masalan sahifani
+ * yopib qo'yishi mumkin). Status faqat natija olinganda
+ * (/api/idv/get orqali) "Used" ga o'zgaradi.
  */
 app.post(
   "/api/idv/create_link_token",
@@ -581,7 +799,9 @@ app.post(
        * Zoho Lead ID yuboriladi.
        *
        * Bu Plaid verificationni aniq Zoho Lead bilan
-       * bog'lash imkonini beradi.
+       * bog'lash imkonini beradi — /api/idv/get chaqirilganda
+       * shu client_user_id orqali qaysi Leadni "Used" qilishni
+       * bilib olamiz.
        */
       const plaidClientUserId = String(lead.id);
 
@@ -648,6 +868,18 @@ app.post(
    GET IDENTITY VERIFICATION RESULT
 ========================================================= */
 
+/**
+ * Plaid identity_verification natijasini oladi.
+ *
+ * Natija "terminal" holatga yetganda (ya'ni "active"
+ * bosqichidan chiqqanda — success, failed, expired, canceled,
+ * pending_review va h.k.), tegishli Zoho Lead'ning
+ * Plaid_Token_Status maydoni "Used" ga, Plaid_Token_Used_Time
+ * esa joriy vaqtga o'zgartiriladi.
+ *
+ * Bu — CRM yangilanishi muvaffaqiyatsiz bo'lsa ham, foydalanuvchiga
+ * IDV natijasi baribir qaytariladigan best-effort operatsiya.
+ */
 app.post("/api/idv/get", async (req, res) => {
   try {
     const { identity_verification_id } = req.body;
@@ -676,11 +908,43 @@ app.post("/api/idv/get", async (req, res) => {
         ).trim(),
       });
 
+    const idvStatus = response.data?.status;
+    const leadId = response.data?.client_user_id;
+
     console.log("IDV result received successfully");
-    console.log(
-      "Status:",
-      response.data?.status || "Unknown"
-    );
+    console.log("Status:", idvStatus || "Unknown");
+    console.log("client_user_id (Zoho Lead ID):", leadId || "(none)");
+
+    // "active" — verification hali davom etmoqda, natija yakuniy emas.
+    const isTerminal = Boolean(idvStatus) && idvStatus !== "active";
+
+    if (isTerminal && leadId) {
+      try {
+        await updateLeadFields(leadId, {
+          [zohoTokenStatusField]: TOKEN_STATUS_USED,
+          [zohoTokenUsedField]: new Date().toISOString(),
+        });
+
+        console.log(
+          "Plaid_Token_Status set to 'Used' for Lead:",
+          leadId
+        );
+      } catch (updateError) {
+        // CRM yangilanishi muvaffaqiyatsiz bo'lsa ham, IDV natijasini
+        // foydalanuvchiga qaytarishda davom etamiz.
+        console.error(
+          "Failed to mark token Used in CRM for Lead",
+          leadId,
+          ":",
+          updateError.message
+        );
+      }
+    } else if (isTerminal && !leadId) {
+      console.warn(
+        "IDV terminal but no client_user_id present — cannot update token status"
+      );
+    }
+
     console.log("=========================\n");
 
     return res.json({
