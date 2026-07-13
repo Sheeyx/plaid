@@ -510,7 +510,12 @@
     const ZOHO_FORM_BASE_URL =
       "https://forms.zohopublic.com/unitedtransports/form/test/formperma/pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ?zf_rszfm=1";
 
+    const ALLOWED_ZOHO_ORIGINS = new Set([
+      "https://forms.zohopublic.com",
+    ]);
+
     let isRedirecting = false;
+    let currentToken = null;
 
     function getToken() {
       const params = new URLSearchParams(window.location.search);
@@ -520,23 +525,34 @@
         const newToken = tokenFromUrl.trim();
         const existingToken = sessionStorage.getItem("plaid_token");
 
-        // Yangi token keldi — eski sessionni tozala
-        if (existingToken !== newToken) {
-          sessionStorage.clear();
+        if (existingToken && existingToken !== newToken) {
+          sessionStorage.removeItem("plaid_token");
         }
 
         sessionStorage.setItem("plaid_token", newToken);
+        currentToken = newToken;
         return newToken;
       }
 
-      return null;
+      const storedToken = sessionStorage.getItem("plaid_token");
+      currentToken = storedToken || null;
+      return currentToken;
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
 
     function showError(message) {
       document.body.innerHTML = `
         <div class="error-card">
           <strong>Application link is invalid.</strong><br />
-          ${message}<br />
+          ${escapeHtml(message)}<br />
           Please open the original application link from your email and try again.
         </div>
       `;
@@ -548,12 +564,16 @@
 
     function setLoaderMessage(text) {
       const el = document.getElementById("truckLoaderMessage");
-      if (el) el.textContent = text;
+      if (el) {
+        el.textContent = text;
+      }
     }
 
     function hideLoader() {
       const loader = document.getElementById("truckLoader");
-      if (loader) loader.style.display = "none";
+      if (loader) {
+        loader.style.display = "none";
+      }
     }
 
     function buildZohoFormUrl(token) {
@@ -563,18 +583,41 @@
     }
 
     function redirectToVerify() {
-      // Bir necha marta chaqirilishini oldini oladi
-      if (isRedirecting) return;
+      if (isRedirecting) {
+        return;
+      }
+
+      const token =
+        currentToken || sessionStorage.getItem("plaid_token");
+
+      if (!token) {
+        showError(
+          "Verification token was lost before redirecting to Plaid."
+        );
+        return;
+      }
+
       isRedirecting = true;
 
       const redirecting = document.getElementById("redirecting");
-      if (redirecting) redirecting.style.display = "block";
+      if (redirecting) {
+        redirecting.style.display = "block";
+      }
 
-      // Token sessionda saqlangan — verify.html u yerdan oladi
+      const formContainer = document.getElementById(
+        "zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"
+      );
+      if (formContainer) {
+        formContainer.style.display = "none";
+      }
+
+      const verifyUrl =
+        "/verify?token=" + encodeURIComponent(token);
+
       try {
-        window.top.location.href = "/verify";
-      } catch (e) {
-        window.location.href = "/verify";
+        window.top.location.assign(verifyUrl);
+      } catch (error) {
+        window.location.assign(verifyUrl);
       }
     }
 
@@ -582,6 +625,13 @@
       const formContainer = document.getElementById(
         "zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"
       );
+
+      if (!formContainer) {
+        showError("Zoho form container was not found.");
+        return;
+      }
+
+      formContainer.innerHTML = "";
       formContainer.style.display = "block";
 
       const iframe = document.createElement("iframe");
@@ -589,45 +639,62 @@
       iframe.style.border = "none";
       iframe.style.height = "404px";
       iframe.style.width = "100%";
-      iframe.style.transition = "all 0.5s ease";
+      iframe.style.transition = "height 0.5s ease";
       iframe.setAttribute("aria-label", "Application");
+      iframe.setAttribute("allow", "clipboard-write");
+
       formContainer.appendChild(iframe);
 
-      window.addEventListener("message", function (event) {
-        const eventData = event.data;
+      window.addEventListener(
+        "message",
+        function (event) {
+          if (!ALLOWED_ZOHO_ORIGINS.has(event.origin)) {
+            return;
+          }
 
-        if (!eventData || eventData.constructor !== String) return;
+          const eventData = event.data;
 
-        const zfData = eventData.split("|");
-        if (zfData.length !== 2 && zfData.length !== 3) return;
+          if (typeof eventData !== "string") {
+            return;
+          }
 
-        const zfPerma = zfData[0];
-        const zfHeight = parseInt(zfData[1], 10) + 15 + "px";
-        const isSubmitted = zfData.length === 3;
+          const zfData = eventData.split("|");
 
-        const formIframe = formContainer.getElementsByTagName("iframe")[0];
+          if (zfData.length < 2) {
+            return;
+          }
 
-        if (
-          formIframe &&
-          formIframe.src.indexOf("formperma") > 0 &&
-          formIframe.src.indexOf(zfPerma) > 0
-        ) {
-          if (formIframe.style.height !== zfHeight) {
-            formIframe.style.height = zfHeight;
+          const zfPerma = zfData[0];
+          const parsedHeight = Number.parseInt(zfData[1], 10);
+          const isSubmitted =
+            zfData.length >= 3 && String(zfData[2]).trim() !== "";
+
+          const formIframe =
+            formContainer.getElementsByTagName("iframe")[0];
+
+          if (
+            !formIframe ||
+            !formIframe.src.includes("formperma") ||
+            !formIframe.src.includes(zfPerma)
+          ) {
+            return;
+          }
+
+          if (Number.isFinite(parsedHeight) && parsedHeight > 0) {
+            const newHeight = parsedHeight + 15 + "px";
+            if (formIframe.style.height !== newHeight) {
+              formIframe.style.height = newHeight;
+            }
           }
 
           if (isSubmitted) {
             redirectToVerify();
           }
-        }
-      }, false);
+        },
+        false
+      );
     }
 
-    /**
-     * Zoho formani ko'rsatishdan oldin, tokenni backend orqali
-     * CRM (Zoho Leads) dagi Plaid_Token bilan solishtiramiz.
-     * Tekshiruv tugagunicha truck loader ko'rsatiladi.
-     */
     async function validateAndLoadForm() {
       const token = getToken();
 
@@ -641,7 +708,10 @@
       try {
         const response = await fetch("/api/token/validate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
           body: JSON.stringify({ token }),
         });
 
@@ -652,13 +722,14 @@
           return;
         }
 
-        // Token CRM bilan mos keldi — endi Zoho formani yuklaymiz
         setLoaderMessage("Loading your application");
         mountZohoForm(token);
         hideLoader();
-      } catch (err) {
-        console.error("Token validation request failed:", err);
-        showError("We couldn't verify your link right now. Please try again in a moment.");
+      } catch (error) {
+        console.error("Token validation request failed:", error);
+        showError(
+          "We couldn't verify your link right now. Please try again in a moment."
+        );
       }
     }
 
