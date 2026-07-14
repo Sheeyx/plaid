@@ -293,6 +293,7 @@
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 
   <script>
+    const TOKEN_VALIDATE_API = "/api/token/validate";
     const CREATE_LINK_TOKEN_API = "/api/idv/create_link_token";
     const COMPLETE_IDV_API = "/api/idv/complete";
     const COMPLETE_ROUTE = "/complete";
@@ -335,6 +336,146 @@
       }
 
       return sessionStorage.getItem("plaid_token") || null;
+    }
+
+    function normalizeCrmValue(value) {
+      return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ");
+    }
+
+    function getTokenStatusFromResponse(data) {
+      return (
+        data?.token_status ||
+        data?.plaid_token_status ||
+        data?.Plaid_Token_Status ||
+        data?.record?.Plaid_Token_Status ||
+        ""
+      );
+    }
+
+    function getPlaidStageFromResponse(data) {
+      return (
+        data?.stage ||
+        data?.plaid_stage ||
+        data?.Plaid_Stage ||
+        data?.record?.Plaid_Stage ||
+        ""
+      );
+    }
+
+    function getRouteForPlaidStage(stage) {
+      const normalizedStage = normalizeCrmValue(stage);
+
+      if (
+        normalizedStage === "zoho form" ||
+        normalizedStage === "application" ||
+        normalizedStage === "application form"
+      ) {
+        return "/";
+      }
+
+      if (
+        normalizedStage === "plaid verification" ||
+        normalizedStage === "plaid verify" ||
+        normalizedStage === "verification"
+      ) {
+        return "/verify";
+      }
+
+      if (
+        normalizedStage === "completed" ||
+        normalizedStage === "complete"
+      ) {
+        return "/complete";
+      }
+
+      return null;
+    }
+
+    function normalizeCurrentRoute(pathname) {
+      let route = String(pathname || "/");
+
+      if (route === "/index.html") {
+        return "/";
+      }
+
+      if (route === "/verify.html") {
+        return "/verify";
+      }
+
+      if (route === "/complete.html") {
+        return "/complete";
+      }
+
+      if (route.length > 1 && route.endsWith("/")) {
+        route = route.slice(0, -1);
+      }
+
+      return route || "/";
+    }
+
+    async function validateTokenAndRoute(token) {
+      const response = await fetch(TOKEN_VALIDATE_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.valid !== true) {
+        throw new Error(
+          data.message || "This verification link is invalid."
+        );
+      }
+
+      const tokenStatus = getTokenStatusFromResponse(data);
+
+      /*
+       * Expiry time is intentionally NOT checked.
+       * Only Plaid_Token_Status = Active is accepted.
+       */
+      if (normalizeCrmValue(tokenStatus) !== "active") {
+        throw new Error(
+          data.message ||
+            "This verification link is no longer active."
+        );
+      }
+
+      const plaidStage = getPlaidStageFromResponse(data);
+      const targetRoute = getRouteForPlaidStage(plaidStage);
+
+      if (!targetRoute) {
+        throw new Error(
+          `Unknown Plaid Stage: ${plaidStage || "empty"}`
+        );
+      }
+
+      const currentRoute = normalizeCurrentRoute(
+        window.location.pathname
+      );
+
+      if (currentRoute !== targetRoute) {
+        setStatus(`Continuing from ${plaidStage} stage...`);
+
+        window.location.replace(targetRoute);
+
+        return {
+          redirected: true,
+          data,
+        };
+      }
+
+      return {
+        redirected: false,
+        data,
+      };
     }
 
     function setStatus(message, spinning = true) {
@@ -667,12 +808,12 @@
       }
     }
 
-    window.addEventListener("load", function () {
+    window.addEventListener("load", async function () {
       const token = getToken();
 
-      console.log("\n=== VERIFY PAGE LOADED ===");
+      console.log("=== VERIFY PAGE LOADED ===");
       console.log("Token exists:", Boolean(token));
-      console.log("==========================\n");
+      console.log("==========================");
 
       if (!token) {
         showError(
@@ -683,15 +824,37 @@
         return;
       }
 
-      /*
-       * MUHIM TUZATISH:
-       * Avval bu yerda faqat token tekshirilgan, startIDV()
-       * chaqirilmagan. Endi /verify yuklanishi bilan Plaid
-       * avtomatik ochiladi.
-       */
-      window.setTimeout(() => {
-        startIDV();
-      }, 150);
+      try {
+        setStatus("Checking your current application stage...");
+
+        const result = await validateTokenAndRoute(token);
+
+        if (result.redirected) {
+          return;
+        }
+
+        /*
+         * Plaid opens only when:
+         * 1. token exists;
+         * 2. Plaid_Token_Status is Active;
+         * 3. Plaid_Stage is Plaid verification.
+         */
+        window.setTimeout(() => {
+          startIDV();
+        }, 150);
+      } catch (error) {
+        console.error(
+          "Token validation or stage routing failed:",
+          error
+        );
+
+        showError(
+          error.message ||
+            "We couldn't verify this link right now."
+        );
+        setStatus("Verification link is not available.", false);
+        setButtonLoading(false);
+      }
     });
   </script>
 </body>

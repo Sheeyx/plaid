@@ -517,6 +517,150 @@
     let isRedirecting = false;
     let currentToken = null;
 
+    const TOKEN_VALIDATE_API = "/api/token/validate";
+
+    function normalizeCrmValue(value) {
+      return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ");
+    }
+
+    function getTokenStatusFromResponse(data) {
+      return (
+        data?.token_status ||
+        data?.plaid_token_status ||
+        data?.Plaid_Token_Status ||
+        data?.record?.Plaid_Token_Status ||
+        ""
+      );
+    }
+
+    function getPlaidStageFromResponse(data) {
+      return (
+        data?.stage ||
+        data?.plaid_stage ||
+        data?.Plaid_Stage ||
+        data?.record?.Plaid_Stage ||
+        ""
+      );
+    }
+
+    function getRouteForPlaidStage(stage) {
+      const normalizedStage = normalizeCrmValue(stage);
+
+      if (
+        normalizedStage === "zoho form" ||
+        normalizedStage === "application" ||
+        normalizedStage === "application form"
+      ) {
+        return "/";
+      }
+
+      if (
+        normalizedStage === "plaid verification" ||
+        normalizedStage === "plaid verify" ||
+        normalizedStage === "verification"
+      ) {
+        return "/verify";
+      }
+
+      if (
+        normalizedStage === "completed" ||
+        normalizedStage === "complete"
+      ) {
+        return "/complete";
+      }
+
+      return null;
+    }
+
+    function normalizeCurrentRoute(pathname) {
+      let route = String(pathname || "/");
+
+      if (route === "/index.html") {
+        return "/";
+      }
+
+      if (route === "/verify.html") {
+        return "/verify";
+      }
+
+      if (route === "/complete.html") {
+        return "/complete";
+      }
+
+      if (route.length > 1 && route.endsWith("/")) {
+        route = route.slice(0, -1);
+      }
+
+      return route || "/";
+    }
+
+    async function validateTokenAndRoute(token) {
+      const response = await fetch(TOKEN_VALIDATE_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.valid !== true) {
+        throw new Error(
+          data.message || "This application link is invalid."
+        );
+      }
+
+      const tokenStatus = getTokenStatusFromResponse(data);
+
+      /*
+       * Expiry time is intentionally NOT checked here.
+       * The token is usable only when CRM status is Active.
+       */
+      if (normalizeCrmValue(tokenStatus) !== "active") {
+        throw new Error(
+          data.message ||
+            "This application link is no longer active."
+        );
+      }
+
+      const plaidStage = getPlaidStageFromResponse(data);
+      const targetRoute = getRouteForPlaidStage(plaidStage);
+
+      if (!targetRoute) {
+        throw new Error(
+          `Unknown Plaid Stage: ${plaidStage || "empty"}`
+        );
+      }
+
+      const currentRoute = normalizeCurrentRoute(
+        window.location.pathname
+      );
+
+      if (currentRoute !== targetRoute) {
+        setLoaderMessage(
+          `Continuing from ${plaidStage} stage`
+        );
+
+        window.location.replace(targetRoute);
+
+        return {
+          redirected: true,
+          data,
+        };
+      }
+
+      return {
+        redirected: false,
+        data,
+      };
+    }
+
     function getToken() {
       const params = new URLSearchParams(window.location.search);
       const tokenFromUrl = params.get("token");
@@ -706,19 +850,9 @@
       setLoaderMessage("Verifying your application link");
 
       try {
-        const response = await fetch("/api/token/validate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          cache: "no-store",
-          body: JSON.stringify({ token }),
-        });
+        const result = await validateTokenAndRoute(token);
 
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok || !data.valid) {
-          showError(data.message || "This link is no longer valid.");
+        if (result.redirected) {
           return;
         }
 
@@ -726,9 +860,14 @@
         mountZohoForm(token);
         hideLoader();
       } catch (error) {
-        console.error("Token validation request failed:", error);
+        console.error(
+          "Token validation or stage routing failed:",
+          error
+        );
+
         showError(
-          "We couldn't verify your link right now. Please try again in a moment."
+          error.message ||
+            "We couldn't verify your link right now. Please try again in a moment."
         );
       }
     }
