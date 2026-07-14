@@ -507,9 +507,6 @@
   </div>
 
   <script>
-    const ZOHO_FORM_BASE_URL =
-      "https://forms.zohopublic.com/unitedtransports/form/test/formperma/pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ?zf_rszfm=1";
-
     const TOKEN_VALIDATE_API = "/api/token/validate";
     const SET_VERIFICATION_STAGE_API = "/api/stage/verification";
 
@@ -611,8 +608,23 @@
       }
     }
 
-    function buildZohoFormUrl(token) {
-      const url = new URL(ZOHO_FORM_BASE_URL);
+    function buildZohoFormUrl(token, formUrl) {
+      if (!formUrl || String(formUrl).trim() === "") {
+        throw new Error(
+          "Zoho Form URL was not returned by the server."
+        );
+      }
+
+      let url;
+
+      try {
+        url = new URL(String(formUrl).trim());
+      } catch (error) {
+        throw new Error(
+          "The selected Zoho Form URL is invalid."
+        );
+      }
+
       url.searchParams.set("Plaid_Token", token);
       return url.toString();
     }
@@ -807,7 +819,7 @@
       }
     }
 
-    function mountZohoForm(token) {
+    function mountZohoForm(token, formType, formUrl) {
       const formContainer = document.getElementById(
         "zf_div_pYqr5ywt51AyFSwoqqmZnWNWyhVIBFq2nmoaunKbIRQ"
       );
@@ -817,11 +829,43 @@
         return;
       }
 
+      const formTitle = document.querySelector(
+        ".form-header h1"
+      );
+      const formDescription = document.querySelector(
+        ".form-header p"
+      );
+
+      if (formType === "prepaid") {
+        if (formTitle) {
+          formTitle.textContent = "Prepaid Application Form";
+        }
+
+        if (formDescription) {
+          formDescription.textContent =
+            "Please complete the prepaid application form.";
+        }
+      } else if (formType === "credit_line") {
+        if (formTitle) {
+          formTitle.textContent =
+            "Credit Line Application Form";
+        }
+
+        if (formDescription) {
+          formDescription.textContent =
+            "Please complete the credit line application form.";
+        }
+      } else {
+        throw new Error(
+          `Unknown Zoho Form type: ${formType || "empty"}`
+        );
+      }
+
       formContainer.innerHTML = "";
       formContainer.style.display = "block";
 
       const iframe = document.createElement("iframe");
-      iframe.src = buildZohoFormUrl(token);
+      iframe.src = buildZohoFormUrl(token, formUrl);
       iframe.style.border = "none";
       iframe.style.height = "404px";
       iframe.style.width = "100%";
@@ -900,8 +944,39 @@
           return;
         }
 
-        setLoaderMessage("Loading your application");
-        mountZohoForm(token);
+        const formType = String(
+          result.data.form_type || ""
+        ).trim();
+
+        const formUrl = String(
+          result.data.form_url || ""
+        ).trim();
+
+        const paymentCondition = String(
+          result.data.payment_condition || ""
+        ).trim();
+
+        if (!formType || !formUrl) {
+          throw new Error(
+            `No Zoho Form is configured for Payment Condition: ${
+              paymentCondition || "empty"
+            }`
+          );
+        }
+
+        console.log(
+          "Payment Condition:",
+          paymentCondition
+        );
+        console.log("Selected form type:", formType);
+
+        setLoaderMessage(
+          formType === "prepaid"
+            ? "Loading your prepaid application"
+            : "Loading your credit line application"
+        );
+
+        mountZohoForm(token, formType, formUrl);
         hideLoader();
       } catch (error) {
         console.error(
