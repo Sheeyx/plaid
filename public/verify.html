@@ -2,9 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
 
-  <title>United Transports — Identity Verification</title>
+  <title>
+    United Transports — Identity Verification
+  </title>
 
   <style>
     * {
@@ -15,7 +20,11 @@
 
     body {
       min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
       background: #f0f2f5;
       color: #111827;
     }
@@ -107,7 +116,9 @@
       background: #ffffff;
       border: 1px solid #e5e7eb;
       border-radius: 16px;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      box-shadow:
+        0 12px 30px
+        rgba(15, 23, 42, 0.08);
       text-align: center;
     }
 
@@ -189,7 +200,9 @@
       font-size: 15px;
       font-weight: 700;
       cursor: pointer;
-      transition: opacity 0.2s ease, transform 0.2s ease;
+      transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
     }
 
     .verify-btn:hover:not(:disabled) {
@@ -234,7 +247,9 @@
 
 <body>
   <nav class="topnav">
-    <div class="logo">United <span>Transports</span></div>
+    <div class="logo">
+      United <span>Transports</span>
+    </div>
 
     <div class="progress-wrap">
       <div class="progress-step done">
@@ -260,20 +275,36 @@
 
   <main class="page">
     <section class="card">
-      <div class="icon-wrap">🪪</div>
+      <div class="icon-wrap">
+        🪪
+      </div>
 
-      <h1>Identity Verification</h1>
+      <h1>
+        Identity Verification
+      </h1>
 
       <p class="description">
-        Plaid will open automatically. Follow the secure steps to verify your identity.
+        Plaid will open automatically.
+        Follow the secure steps to verify
+        your identity.
       </p>
 
       <div class="status-box">
-        <div class="spinner" id="status-spinner"></div>
-        <span id="status-text">Preparing secure verification...</span>
+        <div
+          class="spinner"
+          id="status-spinner"
+        ></div>
+
+        <span id="status-text">
+          Preparing secure verification...
+        </span>
       </div>
 
-      <div class="error-box" id="error-box" role="alert"></div>
+      <div
+        class="error-box"
+        id="error-box"
+        role="alert"
+      ></div>
 
       <button
         type="button"
@@ -285,61 +316,114 @@
       </button>
 
       <p class="security-note">
-        Your verification is handled securely by Plaid. Do not close this page until the process is complete.
+        Your verification is handled securely
+        by Plaid. Do not close this page until
+        the process is complete.
       </p>
     </section>
   </main>
 
-  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  <script
+    src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"
+  ></script>
 
   <script>
-    const TOKEN_VALIDATE_API = "/api/token/validate";
-    const CREATE_LINK_TOKEN_API = "/api/idv/create_link_token";
-    const COMPLETE_IDV_API = "/api/idv/complete";
-    const COMPLETE_ROUTE = "/complete";
+    const TOKEN_VALIDATE_API =
+      "/api/token/validate";
+
+    const CREATE_LINK_TOKEN_API =
+      "/api/idv/create_link_token";
+
+    const COMPLETE_IDV_API =
+      "/api/idv/complete";
+
+    const COMPLETE_ROUTE =
+      "/complete";
 
     let isOpening = false;
     let isCompleting = false;
     let plaidHandler = null;
 
     function readTokenFromHash() {
-      const hash = window.location.hash.replace(/^#/, "");
-      const hashParams = new URLSearchParams(hash);
+      const hash =
+        window.location.hash.replace(
+          /^#/,
+          ""
+        );
+
+      const hashParams =
+        new URLSearchParams(hash);
+
       return hashParams.get("token");
     }
 
     function getToken() {
-      const params = new URLSearchParams(window.location.search);
-      const tokenFromUrl = params.get("token") || readTokenFromHash();
+      const params =
+        new URLSearchParams(
+          window.location.search
+        );
 
-      if (tokenFromUrl && tokenFromUrl.trim() !== "") {
-        const newToken = tokenFromUrl.trim();
-        const existingToken = sessionStorage.getItem("plaid_token");
+      const tokenFromUrl =
+        params.get("token") ||
+        readTokenFromHash();
 
-        if (existingToken && existingToken !== newToken) {
-          sessionStorage.removeItem("plaid_token");
+      if (
+        tokenFromUrl &&
+        tokenFromUrl.trim() !== ""
+      ) {
+        const newToken =
+          tokenFromUrl.trim();
+
+        const existingToken =
+          sessionStorage.getItem(
+            "plaid_token"
+          );
+
+        if (
+          existingToken &&
+          existingToken !== newToken
+        ) {
+          sessionStorage.removeItem(
+            "plaid_token"
+          );
         }
 
-        sessionStorage.setItem("plaid_token", newToken);
+        sessionStorage.setItem(
+          "plaid_token",
+          newToken
+        );
 
-        const cleanUrl = new URL(window.location.href);
-        cleanUrl.searchParams.delete("token");
+        const cleanUrl =
+          new URL(
+            window.location.href
+          );
+
+        cleanUrl.searchParams.delete(
+          "token"
+        );
+
         cleanUrl.hash = "";
 
         window.history.replaceState(
           {},
           document.title,
-          cleanUrl.pathname + cleanUrl.search
+          cleanUrl.pathname +
+            cleanUrl.search
         );
 
         return newToken;
       }
 
-      return sessionStorage.getItem("plaid_token") || null;
+      return (
+        sessionStorage.getItem(
+          "plaid_token"
+        ) || null
+      );
     }
 
     function normalizeRoute(pathname) {
-      let route = String(pathname || "/");
+      let route =
+        String(pathname || "/");
 
       if (route === "/index.html") {
         return "/";
@@ -353,47 +437,82 @@
         return "/complete";
       }
 
-      if (route.length > 1 && route.endsWith("/")) {
+      if (
+        route.length > 1 &&
+        route.endsWith("/")
+      ) {
         route = route.slice(0, -1);
       }
 
       return route || "/";
     }
 
-    function buildRouteUrl(route, token) {
+    function buildRouteUrl(
+      route,
+      token
+    ) {
       if (route === "/complete") {
         return "/complete";
       }
 
-      return route + "?token=" + encodeURIComponent(token);
+      return (
+        route +
+        "?token=" +
+        encodeURIComponent(token)
+      );
     }
 
-    function setStatus(message, spinning = true) {
-      const statusText = document.getElementById("status-text");
-      const spinner = document.getElementById("status-spinner");
+    function setStatus(
+      message,
+      spinning = true
+    ) {
+      const statusText =
+        document.getElementById(
+          "status-text"
+        );
+
+      const spinner =
+        document.getElementById(
+          "status-spinner"
+        );
 
       if (statusText) {
-        statusText.textContent = message;
+        statusText.textContent =
+          message;
       }
 
       if (spinner) {
-        spinner.style.display = spinning ? "block" : "none";
+        spinner.style.display =
+          spinning
+            ? "block"
+            : "none";
       }
     }
 
     function showError(message) {
-      const errorBox = document.getElementById("error-box");
+      const errorBox =
+        document.getElementById(
+          "error-box"
+        );
 
       if (!errorBox) {
+        console.error(message);
         return;
       }
 
-      errorBox.textContent = message;
-      errorBox.style.display = "block";
+      errorBox.textContent =
+        message ||
+        "Something went wrong.";
+
+      errorBox.style.display =
+        "block";
     }
 
     function hideError() {
-      const errorBox = document.getElementById("error-box");
+      const errorBox =
+        document.getElementById(
+          "error-box"
+        );
 
       if (!errorBox) {
         return;
@@ -403,33 +522,52 @@
       errorBox.style.display = "none";
     }
 
-    function setButtonLoading(isLoading) {
-      const button = document.getElementById("verify-btn");
+    function setButtonLoading(
+      isLoading
+    ) {
+      const button =
+        document.getElementById(
+          "verify-btn"
+        );
 
       if (!button) {
         return;
       }
 
-      button.disabled = isLoading;
-      button.textContent = isLoading
-        ? "Opening Plaid..."
-        : "Start Identity Verification →";
+      button.disabled =
+        isLoading;
+
+      button.textContent =
+        isLoading
+          ? "Opening Plaid..."
+          : "Start Identity Verification →";
     }
 
-    function extractErrorMessage(data) {
+    function extractErrorMessage(
+      data
+    ) {
       if (!data) {
         return "Request failed";
       }
 
-      if (data.error && data.error.error_message) {
+      if (
+        data.error &&
+        data.error.error_message
+      ) {
         return data.error.error_message;
       }
 
-      if (data.error && data.error.display_message) {
+      if (
+        data.error &&
+        data.error.display_message
+      ) {
         return data.error.display_message;
       }
 
-      if (data.error && typeof data.error === "string") {
+      if (
+        data.error &&
+        typeof data.error === "string"
+      ) {
         return data.error;
       }
 
@@ -440,50 +578,68 @@
       return "Request failed";
     }
 
-    async function requestJson(url, options) {
-      const response = await fetch(url, {
-        cache: "no-store",
-        ...options,
-      });
+    async function requestJson(
+      url,
+      options
+    ) {
+      const response =
+        await fetch(url, {
+          cache: "no-store",
+          ...options,
+        });
 
-      const data = await response.json().catch(() => ({}));
+      const data =
+        await response
+          .json()
+          .catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
           extractErrorMessage(data) ||
-            `Request failed with status ${response.status}`
+          `Request failed with status ${response.status}`
         );
       }
 
       return data;
     }
 
-    function getRouteFromPlaidStage(stage) {
-      const normalizedStage = String(stage || "")
-        .trim()
-        .toLowerCase()
-        .replace(/[_-]+/g, " ")
-        .replace(/\s+/g, " ");
+    function getRouteFromPlaidStage(
+      stage
+    ) {
+      const normalizedStage =
+        String(stage || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[_-]+/g, " ")
+          .replace(/\s+/g, " ");
 
       if (
-        normalizedStage === "zoho form" ||
-        normalizedStage === "application" ||
-        normalizedStage === "application form"
+        normalizedStage ===
+          "zoho form" ||
+        normalizedStage ===
+          "application" ||
+        normalizedStage ===
+          "application form"
       ) {
         return "/";
       }
 
       if (
-        normalizedStage === "plaid verification" ||
-        normalizedStage === "plaid verify" ||
-        normalizedStage === "verification"
+        normalizedStage ===
+          "plaid verification" ||
+        normalizedStage ===
+          "plaid verify" ||
+        normalizedStage ===
+          "verification"
       ) {
         return "/verify";
       }
 
       if (
-        normalizedStage === "completed" ||
-        normalizedStage === "complete"
+        normalizedStage ===
+          "completed" ||
+        normalizedStage ===
+          "complete"
       ) {
         return "/complete";
       }
@@ -491,20 +647,35 @@
       return null;
     }
 
-    async function validateTokenAndRoute(token) {
-      const data = await requestJson(TOKEN_VALIDATE_API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
-      });
+    async function validateTokenAndRoute(
+      token
+    ) {
+      const data =
+        await requestJson(
+          TOKEN_VALIDATE_API,
+          {
+            method: "POST",
 
-      console.log("Token validation response:", data);
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              token,
+            }),
+          }
+        );
+
+      console.log(
+        "Token validation response:",
+        data
+      );
 
       if (data.valid !== true) {
         throw new Error(
-          data.message || "This application link is invalid."
+          data.message ||
+          "This application link is invalid."
         );
       }
 
@@ -515,30 +686,38 @@
         data.record?.Plaid_Stage ||
         "";
 
-      /*
-       * Zoho form          -> /
-       * Plaid verification -> /verify
-       * Completed          -> /complete
-       */
-      const targetRoute = getRouteFromPlaidStage(plaidStage);
+      const targetRoute =
+        getRouteFromPlaidStage(
+          plaidStage
+        );
 
       if (!targetRoute) {
         throw new Error(
-          `Unknown Plaid Stage: ${plaidStage || "empty"}`
+          `Unknown Plaid Stage: ${
+            plaidStage || "empty"
+          }`
         );
       }
 
-      const currentRoute = normalizeRoute(
-        window.location.pathname
-      );
+      const currentRoute =
+        normalizeRoute(
+          window.location.pathname
+        );
 
-      if (targetRoute !== currentRoute) {
-        setLoaderMessage(
-          `Continuing from ${plaidStage} stage`
+      if (
+        targetRoute !==
+        currentRoute
+      ) {
+        setStatus(
+          `Continuing from ${plaidStage} stage...`,
+          true
         );
 
         window.location.replace(
-          buildRouteUrl(targetRoute, token)
+          buildRouteUrl(
+            targetRoute,
+            token
+          )
         );
 
         return {
@@ -553,7 +732,9 @@
       };
     }
 
-    function extractPlaidExitError(error) {
+    function extractPlaidExitError(
+      error
+    ) {
       if (!error) {
         return null;
       }
@@ -566,61 +747,106 @@
       );
     }
 
-    function waitForPlaidSDK(timeoutMs = 15000) {
-      return new Promise((resolve, reject) => {
-        if (typeof window.Plaid !== "undefined") {
-          resolve(window.Plaid);
-          return;
-        }
-
-        const startedAt = Date.now();
-
-        const timer = window.setInterval(() => {
-          if (typeof window.Plaid !== "undefined") {
-            window.clearInterval(timer);
+    function waitForPlaidSDK(
+      timeoutMs = 15000
+    ) {
+      return new Promise(
+        (resolve, reject) => {
+          if (
+            typeof window.Plaid !==
+            "undefined"
+          ) {
             resolve(window.Plaid);
             return;
           }
 
-          if (Date.now() - startedAt >= timeoutMs) {
-            window.clearInterval(timer);
-            reject(
-              new Error(
-                "Plaid SDK failed to load. Please refresh the page or click the button again."
-              )
+          const startedAt =
+            Date.now();
+
+          const timer =
+            window.setInterval(
+              () => {
+                if (
+                  typeof window.Plaid !==
+                  "undefined"
+                ) {
+                  window.clearInterval(
+                    timer
+                  );
+
+                  resolve(
+                    window.Plaid
+                  );
+
+                  return;
+                }
+
+                if (
+                  Date.now() -
+                    startedAt >=
+                  timeoutMs
+                ) {
+                  window.clearInterval(
+                    timer
+                  );
+
+                  reject(
+                    new Error(
+                      "Plaid SDK failed to load. Please refresh the page or click the button again."
+                    )
+                  );
+                }
+              },
+              100
             );
-          }
-        }, 100);
-      });
+        }
+      );
     }
 
-    async function markCompleted(token, metadata) {
-      console.log("Updating CRM stage to Completed...");
+    async function markCompleted(
+      token,
+      metadata
+    ) {
+      console.log(
+        "Updating CRM stage to Completed..."
+      );
 
-      return requestJson(COMPLETE_IDV_API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-          link_session_id:
-            metadata && metadata.link_session_id
-              ? metadata.link_session_id
-              : null,
-        }),
-      });
+      return requestJson(
+        COMPLETE_IDV_API,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            token,
+
+            link_session_id:
+              metadata &&
+              metadata.link_session_id
+                ? metadata.link_session_id
+                : null,
+          }),
+        }
+      );
     }
 
     function destroyPlaidHandler() {
       if (
         plaidHandler &&
-        typeof plaidHandler.destroy === "function"
+        typeof plaidHandler.destroy ===
+          "function"
       ) {
         try {
           plaidHandler.destroy();
         } catch (error) {
-          console.warn("Could not destroy Plaid handler:", error);
+          console.warn(
+            "Could not destroy Plaid handler:",
+            error
+          );
         }
       }
 
@@ -628,147 +854,319 @@
     }
 
     async function startIDV() {
-      if (isOpening || isCompleting) {
+      if (
+        isOpening ||
+        isCompleting
+      ) {
         return;
       }
 
-      const token = getToken();
+      const token =
+        getToken();
 
-      console.log("\n=== START IDV ===");
-      console.log("Timestamp:", new Date().toISOString());
-      console.log("Token exists:", Boolean(token));
-      console.log("=================\n");
+      console.log(
+        "\n=== START IDV ==="
+      );
+
+      console.log(
+        "Timestamp:",
+        new Date().toISOString()
+      );
+
+      console.log(
+        "Token exists:",
+        Boolean(token)
+      );
+
+      console.log(
+        "=================\n"
+      );
 
       if (!token) {
         showError(
           "Verification token is missing. Please open the original link from your email."
         );
-        setStatus("Verification token is missing.", false);
+
+        setStatus(
+          "Verification token is missing.",
+          false
+        );
+
         setButtonLoading(false);
+
         return;
       }
 
       isOpening = true;
+
       hideError();
       setButtonLoading(true);
-      setStatus("Loading Plaid securely...");
+
+      setStatus(
+        "Loading Plaid securely..."
+      );
 
       try {
         await waitForPlaidSDK();
 
-        setStatus("Creating a secure verification session...");
+        setStatus(
+          "Creating a secure verification session..."
+        );
 
-        const data = await requestJson(CREATE_LINK_TOKEN_API, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token }),
-        });
+        const data =
+          await requestJson(
+            CREATE_LINK_TOKEN_API,
+            {
+              method: "POST",
 
-        console.log("\n=== LINK TOKEN RESPONSE ===");
-        console.log("Data:", data);
-        console.log("===========================\n");
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+                token,
+              }),
+            }
+          );
+
+        console.log(
+          "\n=== LINK TOKEN RESPONSE ==="
+        );
+
+        console.log(
+          "Data:",
+          data
+        );
+
+        console.log(
+          "===========================\n"
+        );
 
         if (!data.link_token) {
-          throw new Error("Plaid link_token was not returned");
+          throw new Error(
+            "Plaid link_token was not returned"
+          );
         }
 
         destroyPlaidHandler();
 
-        plaidHandler = window.Plaid.create({
-          token: data.link_token,
+        plaidHandler =
+          window.Plaid.create({
+            token:
+              data.link_token,
 
-          onLoad: function () {
-            console.log("\n=== PLAID LOADED ===\n");
-            setStatus("Plaid is open. Complete the verification steps.");
-          },
+            onLoad:
+              function () {
+                console.log(
+                  "\n=== PLAID LOADED ===\n"
+                );
 
-          onSuccess: async function (publicToken, metadata) {
-            console.log("\n=== PLAID ON_SUCCESS ===");
-            console.log("Timestamp:", new Date().toISOString());
-            console.log("link_session_id:", metadata?.link_session_id);
-            console.log("status:", metadata?.status);
-            console.log("========================\n");
+                setStatus(
+                  "Plaid is open. Complete the verification steps."
+                );
+              },
 
-            isCompleting = true;
-            isOpening = false;
-            hideError();
-            setButtonLoading(true);
-            setStatus("Saving verification completion...");
+            onSuccess:
+              async function (
+                publicToken,
+                metadata
+              ) {
+                console.log(
+                  "\n=== PLAID ON_SUCCESS ==="
+                );
 
-            try {
-              await markCompleted(token, metadata);
+                console.log(
+                  "Timestamp:",
+                  new Date().toISOString()
+                );
 
-              sessionStorage.removeItem("plaid_token");
-              destroyPlaidHandler();
+                console.log(
+                  "link_session_id:",
+                  metadata?.link_session_id
+                );
 
-              window.location.replace(COMPLETE_ROUTE);
-            } catch (error) {
-              console.error(
-                "Failed to update CRM completion:",
-                error
-              );
+                console.log(
+                  "status:",
+                  metadata?.status
+                );
 
-              isCompleting = false;
-              showError(
-                error.message ||
-                  "Verification was submitted, but CRM could not be updated."
-              );
-              setStatus("CRM update failed. Please try again.", false);
-              setButtonLoading(false);
-            }
-          },
+                console.log(
+                  "========================\n"
+                );
 
-          onExit: function (error, metadata) {
-            console.log("\n=== PLAID ON_EXIT ===");
-            console.log("Timestamp:", new Date().toISOString());
-            console.log("Error:", error);
-            console.log("Metadata:", metadata);
-            console.log("=====================\n");
+                isCompleting = true;
+                isOpening = false;
 
-            if (isCompleting) {
-              return;
-            }
+                hideError();
+                setButtonLoading(true);
 
-            const plaidError = extractPlaidExitError(error);
+                setStatus(
+                  "Saving verification completion..."
+                );
 
-            if (plaidError) {
-              showError(plaidError);
-              setStatus("Plaid closed with an error.", false);
-            } else {
-              hideError();
-              setStatus(
-                "Verification was closed. Click the button to continue.",
-                false
-              );
-            }
+                try {
+                  await markCompleted(
+                    token,
+                    metadata
+                  );
 
-            isOpening = false;
-            setButtonLoading(false);
-            destroyPlaidHandler();
-          },
+                  sessionStorage.removeItem(
+                    "plaid_token"
+                  );
 
-          onEvent: function (eventName, metadata) {
-            console.log("\n=== PLAID EVENT ===");
-            console.log("Event:", eventName);
-            console.log("view_name:", metadata?.view_name);
-            console.log("exit_status:", metadata?.exit_status);
-            console.log("link_session_id:", metadata?.link_session_id);
-            console.log("===================\n");
-          },
-        });
+                  destroyPlaidHandler();
 
-        setStatus("Opening Plaid...");
+                  window.location.replace(
+                    COMPLETE_ROUTE
+                  );
+                } catch (error) {
+                  console.error(
+                    "Failed to update CRM completion:",
+                    error
+                  );
+
+                  isCompleting =
+                    false;
+
+                  showError(
+                    error.message ||
+                    "Verification was submitted, but CRM could not be updated."
+                  );
+
+                  setStatus(
+                    "CRM update failed. Please try again.",
+                    false
+                  );
+
+                  setButtonLoading(
+                    false
+                  );
+                }
+              },
+
+            onExit:
+              function (
+                error,
+                metadata
+              ) {
+                console.log(
+                  "\n=== PLAID ON_EXIT ==="
+                );
+
+                console.log(
+                  "Timestamp:",
+                  new Date().toISOString()
+                );
+
+                console.log(
+                  "Error:",
+                  error
+                );
+
+                console.log(
+                  "Metadata:",
+                  metadata
+                );
+
+                console.log(
+                  "=====================\n"
+                );
+
+                if (isCompleting) {
+                  return;
+                }
+
+                const plaidError =
+                  extractPlaidExitError(
+                    error
+                  );
+
+                if (plaidError) {
+                  showError(
+                    plaidError
+                  );
+
+                  setStatus(
+                    "Plaid closed with an error.",
+                    false
+                  );
+                } else {
+                  hideError();
+
+                  setStatus(
+                    "Verification was closed. Click the button to continue.",
+                    false
+                  );
+                }
+
+                isOpening =
+                  false;
+
+                setButtonLoading(
+                  false
+                );
+
+                destroyPlaidHandler();
+              },
+
+            onEvent:
+              function (
+                eventName,
+                metadata
+              ) {
+                console.log(
+                  "\n=== PLAID EVENT ==="
+                );
+
+                console.log(
+                  "Event:",
+                  eventName
+                );
+
+                console.log(
+                  "view_name:",
+                  metadata?.view_name
+                );
+
+                console.log(
+                  "exit_status:",
+                  metadata?.exit_status
+                );
+
+                console.log(
+                  "link_session_id:",
+                  metadata?.link_session_id
+                );
+
+                console.log(
+                  "===================\n"
+                );
+              },
+          });
+
+        setStatus(
+          "Opening Plaid..."
+        );
+
         plaidHandler.open();
       } catch (error) {
-        console.error("\n=== START IDV ERROR ===");
-        console.error("Error:", error);
-        console.error("=======================\n");
+        console.error(
+          "\n=== START IDV ERROR ==="
+        );
+
+        console.error(
+          "Error:",
+          error
+        );
+
+        console.error(
+          "=======================\n"
+        );
 
         showError(
           error.message ||
-            "Could not start Plaid. Please click the button and try again."
+          "Could not start Plaid. Please click the button and try again."
         );
 
         setStatus(
@@ -777,53 +1175,89 @@
         );
 
         isOpening = false;
+
         setButtonLoading(false);
+
         destroyPlaidHandler();
       }
     }
 
-    window.addEventListener("load", async function () {
-      const token = getToken();
+    window.addEventListener(
+      "load",
+      async function () {
+        const token =
+          getToken();
 
-      console.log("\n=== VERIFY PAGE LOADED ===");
-      console.log("Token exists:", Boolean(token));
-      console.log("==========================\n");
-
-      if (!token) {
-        showError(
-          "Verification token is missing. Please open the original link from your email."
+        console.log(
+          "\n=== VERIFY PAGE LOADED ==="
         );
-        setStatus("Verification token is missing.", false);
-        setButtonLoading(false);
-        return;
-      }
 
-      try {
-        setStatus("Checking your current application stage...");
+        console.log(
+          "Token exists:",
+          Boolean(token)
+        );
 
-        const result = await validateTokenAndRoute(token);
+        console.log(
+          "==========================\n"
+        );
 
-        if (result.redirected) {
+        if (!token) {
+          showError(
+            "Verification token is missing. Please open the original link from your email."
+          );
+
+          setStatus(
+            "Verification token is missing.",
+            false
+          );
+
+          setButtonLoading(false);
+
           return;
         }
 
-        window.setTimeout(() => {
-          startIDV();
-        }, 150);
-      } catch (error) {
-        console.error(
-          "Token validation or stage routing failed:",
-          error
-        );
+        try {
+          setStatus(
+            "Checking your current application stage..."
+          );
 
-        showError(
-          error.message ||
+          const result =
+            await validateTokenAndRoute(
+              token
+            );
+
+          if (
+            result.redirected
+          ) {
+            return;
+          }
+
+          window.setTimeout(
+            () => {
+              startIDV();
+            },
+            150
+          );
+        } catch (error) {
+          console.error(
+            "Token validation or stage routing failed:",
+            error
+          );
+
+          showError(
+            error.message ||
             "We couldn't verify this link right now."
-        );
-        setStatus("Verification link is not available.", false);
-        setButtonLoading(false);
+          );
+
+          setStatus(
+            "Verification link is not available.",
+            false
+          );
+
+          setButtonLoading(false);
+        }
       }
-    });
+    );
   </script>
 </body>
 </html>
