@@ -634,6 +634,39 @@
       return data;
     }
 
+    function getRouteFromPlaidStage(stage) {
+      const normalizedStage = String(stage || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ");
+
+      if (
+        normalizedStage === "zoho form" ||
+        normalizedStage === "application" ||
+        normalizedStage === "application form"
+      ) {
+        return "/";
+      }
+
+      if (
+        normalizedStage === "plaid verification" ||
+        normalizedStage === "plaid verify" ||
+        normalizedStage === "verification"
+      ) {
+        return "/verify";
+      }
+
+      if (
+        normalizedStage === "completed" ||
+        normalizedStage === "complete"
+      ) {
+        return "/complete";
+      }
+
+      return null;
+    }
+
     async function validateTokenAndRoute(token) {
       const data = await requestJson(TOKEN_VALIDATE_API, {
         method: "POST",
@@ -643,18 +676,41 @@
         body: JSON.stringify({ token }),
       });
 
+      console.log("Token validation response:", data);
+
       if (data.valid !== true) {
         throw new Error(
           data.message || "This application link is invalid."
         );
       }
 
-      const targetRoute = normalizeRoute(data.route || "/");
-      const currentRoute = normalizeRoute(window.location.pathname);
+      const plaidStage =
+        data.stage ||
+        data.Plaid_Stage ||
+        data.plaid_stage ||
+        data.record?.Plaid_Stage ||
+        "";
+
+      /*
+       * Zoho form          -> /
+       * Plaid verification -> /verify
+       * Completed          -> /complete
+       */
+      const targetRoute = getRouteFromPlaidStage(plaidStage);
+
+      if (!targetRoute) {
+        throw new Error(
+          `Unknown Plaid Stage: ${plaidStage || "empty"}`
+        );
+      }
+
+      const currentRoute = normalizeRoute(
+        window.location.pathname
+      );
 
       if (targetRoute !== currentRoute) {
         setLoaderMessage(
-          `Continuing from ${data.stage || "current"} stage`
+          `Continuing from ${plaidStage} stage`
         );
 
         window.location.replace(
