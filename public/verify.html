@@ -489,6 +489,24 @@
       }
     }
 
+    /*
+     * Alias qo'shildi: ba'zi umumiy
+     * (index.html bilan bo'lishilgan)
+     * funksiyalar setLoaderMessage()
+     * nomini chaqiradi. verify.html'da
+     * alohida truck-loader yo'q, shu
+     * sabab bu shunchaki setStatus()
+     * ga yo'naltiriladi — shunda
+     * "setLoaderMessage is not defined"
+     * xatosi chiqmaydi.
+     */
+    function setLoaderMessage(
+      message,
+      spinning = true
+    ) {
+      setStatus(message, spinning);
+    }
+
     function showError(message) {
       const errorBox =
         document.getElementById(
