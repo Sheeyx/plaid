@@ -1250,12 +1250,18 @@
             return;
           }
 
-          window.setTimeout(
-            () => {
-              startIDV();
-            },
-            150
+          /*
+           * Plaid endi avtomatik ochilmaydi.
+           * Foydalanuvchi "Start Identity
+           * Verification" tugmasini bosgandan
+           * keyingina startIDV() chaqiriladi.
+           */
+          setStatus(
+            "Ready. Click the button below to start verification.",
+            false
           );
+
+          setButtonLoading(false);
         } catch (error) {
           console.error(
             "Token validation or stage routing failed:",
