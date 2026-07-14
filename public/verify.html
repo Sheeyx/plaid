@@ -338,64 +338,7 @@
       return sessionStorage.getItem("plaid_token") || null;
     }
 
-    function normalizeCrmValue(value) {
-      return String(value || "")
-        .trim()
-        .toLowerCase()
-        .replace(/[_-]+/g, " ")
-        .replace(/\s+/g, " ");
-    }
-
-    function getTokenStatusFromResponse(data) {
-      return (
-        data?.token_status ||
-        data?.plaid_token_status ||
-        data?.Plaid_Token_Status ||
-        data?.record?.Plaid_Token_Status ||
-        ""
-      );
-    }
-
-    function getPlaidStageFromResponse(data) {
-      return (
-        data?.stage ||
-        data?.plaid_stage ||
-        data?.Plaid_Stage ||
-        data?.record?.Plaid_Stage ||
-        ""
-      );
-    }
-
-    function getRouteForPlaidStage(stage) {
-      const normalizedStage = normalizeCrmValue(stage);
-
-      if (
-        normalizedStage === "zoho form" ||
-        normalizedStage === "application" ||
-        normalizedStage === "application form"
-      ) {
-        return "/";
-      }
-
-      if (
-        normalizedStage === "plaid verification" ||
-        normalizedStage === "plaid verify" ||
-        normalizedStage === "verification"
-      ) {
-        return "/verify";
-      }
-
-      if (
-        normalizedStage === "completed" ||
-        normalizedStage === "complete"
-      ) {
-        return "/complete";
-      }
-
-      return null;
-    }
-
-    function normalizeCurrentRoute(pathname) {
+    function normalizeRoute(pathname) {
       let route = String(pathname || "/");
 
       if (route === "/index.html") {
@@ -417,65 +360,12 @@
       return route || "/";
     }
 
-    async function validateTokenAndRoute(token) {
-      const response = await fetch(TOKEN_VALIDATE_API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-        body: JSON.stringify({ token }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok || data.valid !== true) {
-        throw new Error(
-          data.message || "This verification link is invalid."
-        );
+    function buildRouteUrl(route, token) {
+      if (route === "/complete") {
+        return "/complete";
       }
 
-      const tokenStatus = getTokenStatusFromResponse(data);
-
-      /*
-       * Expiry time is intentionally NOT checked.
-       * Only Plaid_Token_Status = Active is accepted.
-       */
-      if (normalizeCrmValue(tokenStatus) !== "active") {
-        throw new Error(
-          data.message ||
-            "This verification link is no longer active."
-        );
-      }
-
-      const plaidStage = getPlaidStageFromResponse(data);
-      const targetRoute = getRouteForPlaidStage(plaidStage);
-
-      if (!targetRoute) {
-        throw new Error(
-          `Unknown Plaid Stage: ${plaidStage || "empty"}`
-        );
-      }
-
-      const currentRoute = normalizeCurrentRoute(
-        window.location.pathname
-      );
-
-      if (currentRoute !== targetRoute) {
-        setStatus(`Continuing from ${plaidStage} stage...`);
-
-        window.location.replace(targetRoute);
-
-        return {
-          redirected: true,
-          data,
-        };
-      }
-
-      return {
-        redirected: false,
-        data,
-      };
+      return route + "?token=" + encodeURIComponent(token);
     }
 
     function setStatus(message, spinning = true) {
@@ -550,6 +440,61 @@
       return "Request failed";
     }
 
+    async function requestJson(url, options) {
+      const response = await fetch(url, {
+        cache: "no-store",
+        ...options,
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          extractErrorMessage(data) ||
+            `Request failed with status ${response.status}`
+        );
+      }
+
+      return data;
+    }
+
+    async function validateTokenAndRoute(token) {
+      const data = await requestJson(TOKEN_VALIDATE_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      if (data.valid !== true) {
+        throw new Error(
+          data.message || "This verification link is invalid."
+        );
+      }
+
+      const targetRoute = normalizeRoute(data.route || "/");
+      const currentRoute = normalizeRoute(window.location.pathname);
+
+      if (targetRoute !== currentRoute) {
+        setStatus(`Continuing from ${data.stage || "current"} stage...`);
+
+        window.location.replace(
+          buildRouteUrl(targetRoute, token)
+        );
+
+        return {
+          redirected: true,
+          data,
+        };
+      }
+
+      return {
+        redirected: false,
+        data,
+      };
+    }
+
     function extractPlaidExitError(error) {
       if (!error) {
         return null;
@@ -594,34 +539,19 @@
     async function markCompleted(token, metadata) {
       console.log("Updating CRM stage to Completed...");
 
-      const response = await fetch(COMPLETE_IDV_API, {
+      return requestJson(COMPLETE_IDV_API, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        cache: "no-store",
         body: JSON.stringify({
           token,
-          identity_verification_id:
+          link_session_id:
             metadata && metadata.link_session_id
               ? metadata.link_session_id
               : null,
         }),
       });
-
-      const data = await response.json().catch(() => null);
-
-      if (!data) {
-        throw new Error("CRM server returned an invalid response");
-      }
-
-      console.log("CRM completion response:", data);
-
-      if (!response.ok) {
-        throw new Error(extractErrorMessage(data));
-      }
-
-      return data;
     }
 
     function destroyPlaidHandler() {
@@ -670,29 +600,17 @@
 
         setStatus("Creating a secure verification session...");
 
-        const response = await fetch(CREATE_LINK_TOKEN_API, {
+        const data = await requestJson(CREATE_LINK_TOKEN_API, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          cache: "no-store",
           body: JSON.stringify({ token }),
         });
 
-        const data = await response.json().catch(() => null);
-
         console.log("\n=== LINK TOKEN RESPONSE ===");
-        console.log("Status:", response.status);
         console.log("Data:", data);
         console.log("===========================\n");
-
-        if (!data) {
-          throw new Error("Server returned an invalid response");
-        }
-
-        if (!response.ok) {
-          throw new Error(extractErrorMessage(data));
-        }
 
         if (!data.link_token) {
           throw new Error("Plaid link_token was not returned");
@@ -711,10 +629,8 @@
           onSuccess: async function (publicToken, metadata) {
             console.log("\n=== PLAID ON_SUCCESS ===");
             console.log("Timestamp:", new Date().toISOString());
-            console.log("public_token:", publicToken);
             console.log("link_session_id:", metadata?.link_session_id);
             console.log("status:", metadata?.status);
-            console.log("Full metadata:", metadata);
             console.log("========================\n");
 
             isCompleting = true;
@@ -811,9 +727,9 @@
     window.addEventListener("load", async function () {
       const token = getToken();
 
-      console.log("=== VERIFY PAGE LOADED ===");
+      console.log("\n=== VERIFY PAGE LOADED ===");
       console.log("Token exists:", Boolean(token));
-      console.log("==========================");
+      console.log("==========================\n");
 
       if (!token) {
         showError(
@@ -833,12 +749,6 @@
           return;
         }
 
-        /*
-         * Plaid opens only when:
-         * 1. token exists;
-         * 2. Plaid_Token_Status is Active;
-         * 3. Plaid_Stage is Plaid verification.
-         */
         window.setTimeout(() => {
           startIDV();
         }, 150);

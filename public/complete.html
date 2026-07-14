@@ -14,25 +14,26 @@
     }
 
     body {
+      min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #f0f2f5;
-      min-height: 100vh;
+      color: #111827;
     }
 
     .topnav {
-      background: #fff;
-      border-bottom: 1px solid #e8e8e8;
-      padding: 0 32px;
       height: 60px;
+      padding: 0 32px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
     }
 
     .logo {
       font-size: 18px;
       font-weight: 700;
-      color: #000;
+      color: #000000;
     }
 
     .logo span {
@@ -50,91 +51,104 @@
       align-items: center;
       gap: 6px;
       font-size: 13px;
-      color: #aaa;
-    }
-
-    .progress-step.done {
-      color: #16a34a;
+      color: #15803d;
+      font-weight: 600;
     }
 
     .progress-num {
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      background: #e8e8e8;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-      color: #888;
-    }
-
-    .progress-step.done .progress-num {
       background: #16a34a;
-      color: #fff;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
     }
 
     .progress-line {
       width: 40px;
       height: 1px;
-      background: #e8e8e8;
-    }
-
-    .progress-line.done {
-      background: #16a34a;
+      background: #86efac;
     }
 
     .page {
       min-height: calc(100vh - 60px);
+      padding: 48px 20px;
       display: flex;
-      align-items: center;
       justify-content: center;
-      padding: 32px;
+      align-items: flex-start;
     }
 
     .card {
       width: 100%;
-      max-width: 460px;
-      background: #fff;
-      border-radius: 16px;
-      border: 1px solid #e8e8e8;
+      max-width: 560px;
       padding: 40px 32px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
       text-align: center;
     }
 
-    .check {
+    .icon {
       width: 72px;
       height: 72px;
-      background: #f0fdf4;
-      border: 2px solid #bbf7d0;
-      border-radius: 16px;
+      margin: 0 auto 22px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 24px;
-      font-size: 32px;
-      color: #16a34a;
+      background: #dcfce7;
+      color: #15803d;
+      font-size: 34px;
+      font-weight: 800;
     }
 
     h1 {
-      font-size: 24px;
-      font-weight: 700;
-      color: #000;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      font-size: 28px;
     }
 
     p {
-      color: #666;
-      font-size: 14px;
+      color: #6b7280;
+      font-size: 15px;
       line-height: 1.7;
     }
 
-    @media (max-width: 768px) {
-      .topnav { padding: 0 16px; }
-      .progress-step span { display: none; }
-      .page { padding: 16px; }
-      .card { padding: 32px 24px; }
+    .note {
+      margin-top: 24px;
+      padding: 16px;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      background: #f0fdf4;
+      color: #166534;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 640px) {
+      .topnav {
+        padding: 0 16px;
+      }
+
+      .progress-step span {
+        display: none;
+      }
+
+      .progress-line {
+        width: 22px;
+      }
+
+      .page {
+        padding: 24px 14px;
+      }
+
+      .card {
+        padding: 32px 20px;
+      }
     }
   </style>
 </head>
@@ -144,17 +158,21 @@
     <div class="logo">United <span>Transports</span></div>
 
     <div class="progress-wrap">
-      <div class="progress-step done">
+      <div class="progress-step">
         <div class="progress-num">✓</div>
         <span>Application</span>
       </div>
-      <div class="progress-line done"></div>
-      <div class="progress-step done">
+
+      <div class="progress-line"></div>
+
+      <div class="progress-step">
         <div class="progress-num">✓</div>
         <span>Verify Identity</span>
       </div>
-      <div class="progress-line done"></div>
-      <div class="progress-step done">
+
+      <div class="progress-line"></div>
+
+      <div class="progress-step">
         <div class="progress-num">✓</div>
         <span>Complete</span>
       </div>
@@ -162,16 +180,25 @@
   </nav>
 
   <main class="page">
-    <div class="card">
-      <div class="check">✓</div>
+    <section class="card">
+      <div class="icon">✓</div>
 
-      <h1>All Done!</h1>
+      <h1>Verification Complete</h1>
 
       <p>
-        Your identity verification has been submitted successfully.<br />
-        Our team will review your application shortly.
+        Your application and identity verification were completed successfully.
+        United Transports will review your information and contact you if anything
+        else is required.
       </p>
-    </div>
+
+      <div class="note">
+        You may safely close this page.
+      </div>
+    </section>
   </main>
+
+  <script>
+    sessionStorage.removeItem("plaid_token");
+  </script>
 </body>
 </html>
